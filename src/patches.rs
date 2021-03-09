@@ -4587,114 +4587,114 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         patcher.add_file_patch(b"Metroid1.pak", empty_frigate_pak);
         rel_config = create_rel_config_file(new_save_spawn_room, config.quickplay);
     } else {
-            patcher.add_file_patch(
-                b"default.dol",
-                |file| patch_dol(
-                    file,
-                    new_save_spawn_room,
-                    version,
-                    config,
-                )
-            );
-            patcher.add_scly_patch(
-                resource_info!("01_intro_hanger.MREA").into(),
-                move |_ps, area| patch_frigate_teleporter(area, frigate_done_spawn_room)
-            );
-            rel_config = create_rel_config_file(
+        patcher.add_file_patch(
+            b"default.dol",
+            |file| patch_dol(
+                file,
                 new_save_spawn_room,
-                config.quickplay
-            );
-        }
-
-        gc_disc.add_file(
-            "rel_config.bin",
-            structs::FstEntryFile::ExternalFile(Box::new(rel_config)),
-        )?;
-
-        // Patch the landing site to avoid loosing all items with custscene trigger //
-        patcher.add_scly_patch(
-            resource_info!("01_over_mainplaza.MREA").into(),
-            patch_landing_site_cutscene_triggers
-        );
-        
-        // New Save Room Starting Items //
-        patcher.add_scly_patch(
-            (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
-            move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false)
-        );
-
-        // Post Frigate Starting Items //
-        if !config.skip_frigate && frigate_done_spawn_room.mrea != new_save_spawn_room.mrea { // but only if it won't override an existing patch
-            patcher.add_scly_patch(
-                (frigate_done_spawn_room.pak_name.as_bytes(), frigate_done_spawn_room.mrea),
-                move |_ps, area| patch_starting_pickups(area, config.frigate_done_starting_items, false)
-            );
-        }
-        patcher.add_resource_patch(
-            resource_info!("STRG_Main.STRG").into(),// 0x0552a456
-            |res| patch_main_strg(res, &config.main_menu_message)
-        );
-        
-        patcher.add_resource_patch(
-            resource_info!("FRME_NewFileSelect.FRME").into(),
-            patch_main_menu
-        );
-
-        patcher.add_resource_patch(
-            resource_info!("STRG_Credits.STRG").into(),
-            |res| patch_credits(res, &pickup_layout)
-        );
-
-        patcher.add_resource_patch(
-            resource_info!("!MinesWorld_Master.SAVW").into(),
-            patch_mines_savw_for_phazon_suit_scan
+                version,
+                config,
+            )
         );
         patcher.add_scly_patch(
-            resource_info!("07_stonehenge.MREA").into(),
-            |ps, area| fix_artifact_of_truth_requirements(ps, area, &pickup_layout)
+            resource_info!("01_intro_hanger.MREA").into(),
+            move |_ps, area| patch_frigate_teleporter(area, frigate_done_spawn_room)
         );
+        rel_config = create_rel_config_file(
+            new_save_spawn_room,
+            config.quickplay
+        );
+    }
+
+    gc_disc.add_file(
+        "rel_config.bin",
+        structs::FstEntryFile::ExternalFile(Box::new(rel_config)),
+    )?;
+
+    // Patch the landing site to avoid loosing all items with custscene trigger //
+    patcher.add_scly_patch(
+        resource_info!("01_over_mainplaza.MREA").into(),
+        patch_landing_site_cutscene_triggers
+    );
+    
+    // New Save Room Starting Items //
+    patcher.add_scly_patch(
+        (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
+        move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false)
+    );
+
+    // Post Frigate Starting Items //
+    if !config.skip_frigate && frigate_done_spawn_room.mrea != new_save_spawn_room.mrea { // but only if it won't override an existing patch
         patcher.add_scly_patch(
-            resource_info!("07_stonehenge.MREA").into(),
-            |ps, area| patch_artifact_hint_availability(ps, area, config.artifact_hint_behavior)
+            (frigate_done_spawn_room.pak_name.as_bytes(), frigate_done_spawn_room.mrea),
+            move |_ps, area| patch_starting_pickups(area, config.frigate_done_starting_items, false)
         );
+    }
+    patcher.add_resource_patch(
+        resource_info!("STRG_Main.STRG").into(),// 0x0552a456
+        |res| patch_main_strg(res, &config.main_menu_message)
+    );
+    
+    patcher.add_resource_patch(
+        resource_info!("FRME_NewFileSelect.FRME").into(),
+        patch_main_menu
+    );
 
-        patcher.add_resource_patch(
-            resource_info!("TXTR_SaveBanner.TXTR").into(),
-            patch_save_banner_txtr
+    patcher.add_resource_patch(
+        resource_info!("STRG_Credits.STRG").into(),
+        |res| patch_credits(res, &pickup_layout)
+    );
+
+    patcher.add_resource_patch(
+        resource_info!("!MinesWorld_Master.SAVW").into(),
+        patch_mines_savw_for_phazon_suit_scan
+    );
+    patcher.add_scly_patch(
+        resource_info!("07_stonehenge.MREA").into(),
+        |ps, area| fix_artifact_of_truth_requirements(ps, area, &pickup_layout)
+    );
+    patcher.add_scly_patch(
+        resource_info!("07_stonehenge.MREA").into(),
+        |ps, area| patch_artifact_hint_availability(ps, area, config.artifact_hint_behavior)
+    );
+
+    patcher.add_resource_patch(
+        resource_info!("TXTR_SaveBanner.TXTR").into(),
+        patch_save_banner_txtr
+    );
+
+    patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
+
+    if config.patch_power_conduits {
+        patch_power_conduits(&mut patcher);
+    }
+
+    patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
+
+    if config.remove_frigidite_lock {
+        make_patch_elite_quarters_access(&mut patcher);
+    }
+
+    if config.remove_mine_security_station_locks {
+        make_remove_mine_security_station_locks_patch(&mut patcher);
+    }
+
+    if config.lower_mines_backwards {
+        make_remove_forcefields_patch(&mut patcher);
+    }
+
+    if config.remove_hall_of_the_elders_forcefield {
+        patcher.add_scly_patch(
+            resource_info!("17_chozo_bowling.MREA").into(), // Hall of the elders
+            move |_ps, area| remove_forcefields(_ps, area),
         );
-
-        patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
-
-        if config.patch_power_conduits {
-            patch_power_conduits(&mut patcher);
-        }
-
-        patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
-
-        if config.remove_frigidite_lock {
-            make_patch_elite_quarters_access(&mut patcher);
-        }
-
-        if config.remove_mine_security_station_locks {
-            make_remove_mine_security_station_locks_patch(&mut patcher);
-        }
-
-        if config.lower_mines_backwards {
-            make_remove_forcefields_patch(&mut patcher);
-        }
-
-        if config.remove_hall_of_the_elders_forcefield {
-            patcher.add_scly_patch(
-                resource_info!("17_chozo_bowling.MREA").into(), // Hall of the elders
-                move |_ps, area| remove_forcefields(_ps, area),
-            );
-        }
+    }
 
 	make_elevators_patch(&mut patcher, &elevator_layout, &config.elevator_layout_override, config.auto_enabled_elevators, config.tiny_elvetator_samus);
 
-        make_elite_research_fight_prereq_patches(&mut patcher);
+    make_elite_research_fight_prereq_patches(&mut patcher);
 
-        patch_heat_damage_per_sec(&mut patcher, config.heat_damage_per_sec);
+    patch_heat_damage_per_sec(&mut patcher, config.heat_damage_per_sec);
 
     patcher.add_scly_patch(
         resource_info!("22_Flaahgra.MREA").into(),
@@ -4807,63 +4807,58 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         }
     }
 
-    if spawn_room != SpawnRoom::LandingSite {
-        // If we have a non-default start point, patch the landing site to avoid
-        // weirdness with cutscene triggers and the ship spawning.
+    patcher.add_scly_patch(
+        resource_info!("02_mines_shotemup.MREA").into(),
+        patch_mines_security_station_soft_lock
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("18_ice_gravity_chamber.MREA").into(),
+        patch_gravity_chamber_stalactite_grapple_point
+    );
+
+    if version == Version::NtscU0_02 {
         patcher.add_scly_patch(
-            resource_info!("02_mines_shotemup.MREA").into(),
-            patch_mines_security_station_soft_lock
+            resource_info!("01_mines_mainplaza.MREA").into(),
+            patch_main_quarry_door_lock_0_02
+        );
+        patcher.add_scly_patch(
+            resource_info!("13_over_burningeffigy.MREA").into(),
+            patch_geothermal_core_door_lock_0_02
+        );
+        patcher.add_scly_patch(
+            resource_info!("19_hive_totem.MREA").into(),
+            patch_hive_totem_boss_trigger_0_02
+        );
+        patcher.add_scly_patch(
+            resource_info!("05_ice_shorelines.MREA").into(),
+            patch_ruined_courtyard_thermal_conduits_0_02
         );
     }
 
+    if version == Version::Pal {
         patcher.add_scly_patch(
-            resource_info!("18_ice_gravity_chamber.MREA").into(),
-            patch_gravity_chamber_stalactite_grapple_point
+            resource_info!("04_mines_pillar.MREA").into(),
+            patch_ore_processing_destructible_rock_pal
         );
+        patcher.add_scly_patch(
+            resource_info!("13_over_burningeffigy.MREA").into(),
+            patch_geothermal_core_destructible_rock_pal
+        );
+        patcher.add_scly_patch(
+            resource_info!("01_mines_mainplaza.MREA").into(),
+            patch_main_quarry_door_lock_pal
+        );
+    }
 
-        if version == Version::NtscU0_02 {
-            patcher.add_scly_patch(
-                resource_info!("01_mines_mainplaza.MREA").into(),
-                patch_main_quarry_door_lock_0_02
-            );
-            patcher.add_scly_patch(
-                resource_info!("13_over_burningeffigy.MREA").into(),
-                patch_geothermal_core_door_lock_0_02
-            );
-            patcher.add_scly_patch(
-                resource_info!("19_hive_totem.MREA").into(),
-                patch_hive_totem_boss_trigger_0_02
-            );
-            patcher.add_scly_patch(
-                resource_info!("05_ice_shorelines.MREA").into(),
-                patch_ruined_courtyard_thermal_conduits_0_02
-            );
-        }
-
-        if version == Version::Pal {
-            patcher.add_scly_patch(
-                resource_info!("04_mines_pillar.MREA").into(),
-                patch_ore_processing_destructible_rock_pal
-            );
-            patcher.add_scly_patch(
-                resource_info!("13_over_burningeffigy.MREA").into(),
-                patch_geothermal_core_destructible_rock_pal
-            );
-            patcher.add_scly_patch(
-                resource_info!("01_mines_mainplaza.MREA").into(),
-                patch_main_quarry_door_lock_pal
-            );
-        }
-
-        // If any of the elevators go straight to the ending, patch out the pre-credits cutscene.
-    	let skip_ending_cinematic = elevator_layout.values()
-        .any(|sr| sr == &SpawnRoom::EndingCinematic);
-    	if skip_ending_cinematic {
-            patcher.add_scly_patch(
-                resource_info!("01_endcinema.MREA").into(),
-                patch_ending_scene_straight_to_credits
-            );
-        }
+    // If any of the elevators go straight to the ending, patch out the pre-credits cutscene.
+    let skip_ending_cinematic = elevator_layout.values()
+    .any(|sr| sr == &SpawnRoom::EndingCinematic);
+    if skip_ending_cinematic {
+        patcher.add_scly_patch(
+            resource_info!("01_endcinema.MREA").into(),
+            patch_ending_scene_straight_to_credits
+        );
     }
 
     if version == Version::NtscU0_00 {
@@ -4872,6 +4867,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             patch_essence_cinematic_skip_whitescreen
         );
     }
+
     if [Version::NtscU0_00, Version::NtscU0_02, Version::Pal].contains(&version) {
         patcher.add_scly_patch(
             resource_info!("03f_crater.MREA").into(),

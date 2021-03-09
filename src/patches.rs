@@ -99,6 +99,7 @@ const ALWAYS_MODAL_HUDMENUS: &[usize] = &[23, 50, 63];
 fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &StartingItems)
     -> HashMap<(u32, FourCC), structs::Resource<'r>>
 {
+    // Get list of all dependencies patcher needs //
     let mut looking_for: HashSet<_> = PickupType::iter()
         .flat_map(|pt| pt.dependencies().iter().cloned())
         .chain(PickupType::iter().map(|pt| pt.hudmemo_strg().into()))
@@ -107,6 +108,7 @@ fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &
     // Dependencies read from paks and custom assets will go here //
     let mut found = HashMap::with_capacity(looking_for.len());
 
+    // Iterate through all paks //
     for pak_name in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) {
 
         // Get pak //
@@ -117,6 +119,7 @@ fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &
             _ => panic!(),
         };
 
+        // Iterate through all resources in pak //
         for res in pak.resources.iter() {
             // If this resource is a dependency needed by the patcher, add the resource to the output list //
             let key = (res.file_id, res.fourcc());
@@ -126,6 +129,9 @@ fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &
         }
     }
 
+    // Remove extra assets from dependency search since they won't appear     //
+    // in any pak. Instead add them to the output resource pool. These assets //
+    // are provided as external files checked into the repository.            //
     for res in crate::custom_assets::custom_assets(&found, starting_items) {
         let key = (res.file_id, res.fourcc());
         looking_for.remove(&key);
@@ -141,6 +147,58 @@ fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &
 
     found
 }
+
+#[derive(Copy, Clone, Debug)]
+pub enum WaterType {
+    Normal,
+    Poision,
+    Lava
+}
+
+fn create_custom_door_cmdl<'r>(
+    resources: &HashMap<(u32, FourCC),
+    structs::Resource<'r>>,
+    door_type: DoorType,
+) -> structs::Resource<'r>
+{
+    let new_cmdl_id: u32 = door_type.shield_cmdl();
+    let new_txtr_id: u32 = door_type.holorim_texture();
+
+    let new_door_cmdl = {
+        // Find and read the blue door CMDL
+        let blue_door_cmdl = {
+            if door_type.is_vertical() {
+                ResourceData::new(&resources[&resource_info!("18D0AEE6.CMDL").into()]) // actually white door but who cares
+            } else {
+                ResourceData::new(&resources[&resource_info!("blueShield_v1.CMDL").into()])
+            }
+        };
+
+        // Deserialize the blue door CMDL into a new mutable CMDL
+        let blue_door_cmdl_bytes = blue_door_cmdl.decompress().into_owned();
+        let mut new_cmdl = Reader::new(&blue_door_cmdl_bytes[..]).read::<structs::Cmdl>(());
+        
+        // Modify the new CMDL to make it unique
+        new_cmdl.material_sets.as_mut_vec()[0].texture_ids.as_mut_vec()[0] = new_txtr_id;
+        
+        // Re-serialize the CMDL //
+        let mut new_cmdl_bytes = vec![];
+        new_cmdl.write_to(&mut new_cmdl_bytes).unwrap();
+
+        // Pad length to multiple of 32 bytes //
+        let len = new_cmdl_bytes.len();
+        new_cmdl_bytes.extend(reader_writer::pad_bytes(32, len).iter());
+
+        // Assemble into a proper resource object
+        pickup_meta::build_resource(
+            new_cmdl_id, // Custom ids start with 0xDEAFxxxx
+            structs::ResourceKind::External(new_cmdl_bytes, b"CMDL".into())
+        )
+    };
+    
+    new_door_cmdl
+}
+
 
 fn artifact_layer_change_template<'r>(instance_id: u32, pickup_kind: u32)
     -> structs::SclyObject<'r>
@@ -806,6 +864,12 @@ fn make_elevators_patch<'a>(
                     let wt = obj.property_data.as_world_transporter_mut().unwrap();
                     wt.mrea = ResId::new(dest.mrea);
                     wt.mlvl = ResId::new(dest.mlvl);
+                    wt.volume = 0; // if we don't turn down the volume of the "wooshing" effect, the player will hear it indefinitely if the destination isn't a WorldTransporter
+                    
+                    if tiny_elvetator_samus
+                    {
+                        wt.player_scale = [0.33,0.33,0.33].into();
+                    }
                 }
             }
 
@@ -2163,11 +2227,27 @@ fn make_main_plaza_locked_door_two_ways<'r>(
     locked_door.ancs.default_animation = 2;
     locked_door.projectiles_collide = 0;
 
-    let door_shield = layer.objects.as_mut_vec().iter_mut()
-        .find(|obj| obj.instance_id == actor_doorshield_id)
-        .and_then(|obj| obj.property_data.as_actor_mut())
-        .unwrap();
-    door_shield.cmdl = door_type.shield_cmdl();
+    {
+        let door_force = layer.objects.as_mut_vec().iter_mut()
+            .find(|obj| obj.instance_id == trigger_doorunlock_id)
+            .and_then(|obj| obj.property_data.as_damageable_trigger_mut())
+            .unwrap();
+        door_force.color_txtr = door_type.forcefield_txtr();
+
+        door_force.damage_vulnerability = door_type.vulnerability();
+
+        if door_type != DoorType::Blue && !config.powerbomb_lockpick {
+            door_force.damage_vulnerability.power_bomb = 2;
+        } else {
+            door_force.damage_vulnerability.power_bomb = 1;
+        }
+
+        let door_shield = layer.objects.as_mut_vec().iter_mut()
+            .find(|obj| obj.instance_id == actor_doorshield_id)
+            .and_then(|obj| obj.property_data.as_actor_mut())
+            .unwrap();
+        door_shield.cmdl = door_type.shield_cmdl();
+    }
     
     let trigger_remove_scan_target_locked_door_and_etank = layer.objects.as_mut_vec().iter_mut()
         .find(|obj| obj.instance_id == trigger_remove_scan_target_locked_door_id)
@@ -2227,6 +2307,20 @@ fn make_main_plaza_locked_door_two_ways<'r>(
 
     Ok(())
 }
+
+fn patch_main_plaza_locked_door_map_icon(res: &mut structs::Resource,door_type:DoorType)
+    -> Result<(),String> {
+    let mapa = res.kind.as_mapa_mut().unwrap();
+
+    let door_icon = mapa.objects.iter_mut()
+    .find(|obj| obj.editor_id == 0x20060)
+    .unwrap();
+    
+    door_icon.type_ = door_type.map_object_type();
+
+    Ok(())
+}
+
 
 fn patch_arboretum_invisible_wall(
     _ps: &mut PatcherState,
@@ -2365,6 +2459,725 @@ fn patch_ruined_courtyard_thermal_conduits(
         *flags |= 1 << 6; // Turn on "Thermal Target"
     }
 
+    Ok(())
+}
+
+fn patch_thermal_conduits_damage_vulnerabilities(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
+    -> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer = &mut scly.layers.as_mut_vec()[0];
+
+    let thermal_conduit_damageable_trigger_obj_ids = [
+        0x000F01C8, // ruined courtyard
+        0x0028043F, // research core
+        0x0015006C, // main ventilation shaft section b
+        0x0019002C, // reactor core
+        0x00190030, // reactor core
+        0x0019002E, // reactor core
+        0x00190029, // reactor core
+        0x001A006C, // reactor core access
+        0x001A006D, // reactor core access
+        0x001B008E, // cargo freight lift to deck gamma
+        0x001B008F, // cargo freight lift to deck gamma
+        0x001B0090, // cargo freight lift to deck gamma
+        0x001E01DC, // biohazard containment
+        0x001E01E1, // biohazard containment
+        0x001E01E0, // biohazard containment
+        0x0020002A, // biotech research area 1
+        0x00200030, // biotech research area 1
+        0x0020002E, // biotech research area 1
+        0x0002024C, // main quarry
+    ];
+    
+    for obj in layer.objects.as_mut_vec().iter_mut() {
+        if thermal_conduit_damageable_trigger_obj_ids.contains(&obj.instance_id) {
+            let dt = obj.property_data.as_damageable_trigger_mut().unwrap();
+            dt.damage_vulnerability = DoorType::Blue.vulnerability();
+            dt.health_info.health = 1.0; // single power beam shot
+        }
+    }
+
+    Ok(())
+}
+
+fn patch_power_conduits<'a>(patcher: &mut PrimePatcher<'_, 'a>)
+{
+    patcher.add_scly_patch(
+        resource_info!("05_ice_shorelines.MREA").into(), // ruined courtyard
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("13_ice_vault.MREA").into(), // research core
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+    
+    patcher.add_scly_patch(
+        resource_info!("08b_under_intro_ventshaft.MREA").into(), // Main Ventilation Shaft Section B
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("07_under_intro_reactor.MREA").into(), // reactor core
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+    
+    patcher.add_scly_patch(
+        resource_info!("06_under_intro_to_reactor.MREA").into(), // reactor core access
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+    
+    patcher.add_scly_patch(
+        resource_info!("06_under_intro_freight.MREA").into(), // cargo freight lift to deck gamma
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+    
+    patcher.add_scly_patch(
+        resource_info!("05_under_intro_zoo.MREA").into(), // biohazard containment
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+    
+    patcher.add_scly_patch(
+        resource_info!("05_under_intro_specimen_chamber.MREA").into(), // biotech research area 1
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+    
+    patcher.add_scly_patch(
+        resource_info!("01_mines_mainplaza.MREA").into(), // main quarry
+        patch_thermal_conduits_damage_vulnerabilities
+    );
+
+    // Note the magmoor ones are missing on purpose
+}
+
+fn is_missile_lock<'r>(obj: &structs::SclyObject<'r>) -> bool {
+    let actor = obj.property_data.as_actor();
+    
+    if actor.is_none() {
+        false // non-actors are never missile locks
+    }
+    else {
+        actor.unwrap().cmdl == 0xEFDFFB8C // missile locks are indentified by their model
+    }
+}
+
+fn patch_remove_missile_lock<'r>(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
+    -> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer = &mut scly.layers.as_mut_vec()[0];
+    
+    // keep everything except for missile locks //
+    layer.objects.as_mut_vec().retain(|obj| !is_missile_lock(obj));
+
+    Ok(())
+}
+
+fn remove_missile_locks<'a>(patcher: &mut PrimePatcher<'_, 'a>, overrides: &Vec<bool>)
+{
+    let mut idx = 0;
+
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("00j_over_hall.MREA").into(), // Temple Security Station
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("00a_over_hall.MREA").into(), // Waterfall Cavern
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("06_over_crashed_ship.MREA").into(), // Frigate Crash Site
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("00m_over_hall.MREA").into(), // Root Tunnel
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("03_over_rootcave.MREA").into(), // Root Cave
+            patch_remove_missile_lock,
+        );    
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("01_mainplaza.MREA").into(), // Main Plaza
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("19_hive_totem.MREA").into(), // Hive Totem
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("0b_connect_tunnel.MREA").into(), // Arboretum Access
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("08_courtyard.MREA").into(), // Arboretum (x2)
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("10_coreentrance.MREA").into(), // Gathering Hall
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("0e_connect_tunnel.MREA").into(), // Watery Hall Access
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("11_wateryhall.MREA").into(), // Watery Hall
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("monkey_shaft.MREA").into(), // Dynamo Access
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("18_halfpipe.MREA").into(), // Crossway
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("20_reflecting_pool.MREA").into(), // Reflecting Pool (x2)
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("15_over_burningtrail.MREA").into(), // Burning Trail
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("00_lava_elev_ice_d.MREA").into(), // Transport to Phendrana Drifts South
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("03_ice_ruins_b.MREA").into(), // Ice Ruins West
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("generic_z6.MREA").into(), // Canyon Entryway
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+    
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("05_ice_shorelines.MREA").into(), // Ruined Courtyard
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("11_ice_observatory.MREA").into(), // Observatory
+            patch_remove_missile_lock,
+        );
+    }
+    idx = idx + 1;
+
+    if overrides.len() <= idx || !overrides[idx] {
+        patcher.add_scly_patch(
+            resource_info!("03_monkey_upper.MREA").into(), // Ruined Gallery
+            patch_remove_missile_lock,
+        );
+    }
+}
+
+
+fn elite_quarters_access_should_keep<'r>(obj: &structs::SclyObject<'r>) -> bool {
+    let platform = obj.property_data.as_platform();
+    platform.is_none() // keep everything that isn't a platform
+}
+
+fn patch_elite_quarters_access(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
+    -> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer = &mut scly.layers.as_mut_vec()[1];
+    layer.objects.as_mut_vec().retain(|obj| elite_quarters_access_should_keep(obj));
+
+    Ok(())
+}
+
+/* removed the beams blocking elite quarters, removing the need for plasma beam */
+fn make_patch_elite_quarters_access<'a>(patcher: &mut PrimePatcher<'_, 'a>)
+{
+    patcher.add_scly_patch(
+        resource_info!("00o_mines_connect.MREA").into(), // Elite Quarters Access
+        patch_elite_quarters_access,
+    );
+}
+
+fn is_door_lock<'r>(obj: &structs::SclyObject<'r>) -> bool {
+    let actor = obj.property_data.as_actor();
+    
+    if actor.is_none() {
+        false // non-actors are never door locks
+    }
+    else {
+        let _actor = actor.unwrap();
+        _actor.cmdl == 0x5391EDB6 || _actor.cmdl == 0x6E5D6796 // door locks are indentified by their model (check for both horizontal and vertical variants)
+    }
+}
+
+fn remove_mine_security_station_locks(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
+    -> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer = &mut scly.layers.as_mut_vec()[0];
+    layer.objects.as_mut_vec().retain(|obj| !is_door_lock(obj));  // keep everything that isn't a door lock
+    
+    Ok(())
+}
+
+/* remove the door locks that appear in mine security station so that 
+   the room can be completed without wave beam */
+fn make_remove_mine_security_station_locks_patch<'a>(patcher: &mut PrimePatcher<'_, 'a>)
+{
+    patcher.add_scly_patch(
+        resource_info!("02_mines_shotemup.MREA").into(), // Mines Security Station
+        remove_mine_security_station_locks,
+    );
+}
+
+fn is_forcefield<'r>(obj: &structs::SclyObject<'r>) -> bool {
+    if obj.instance_id == 271843679 { // hall of the elders forcefield (PWE shows the wrong instance ID for some reason)
+        return true;
+    }
+
+    let actor = obj.property_data.as_actor();
+    
+    if actor.is_none() {
+        false
+    }
+    else {
+        let _actor = actor.unwrap();
+        _actor.cmdl == 0xD793FEC8 || _actor.cmdl == 0x3FCDAF2C // orange forcefields
+    }
+}
+
+fn remove_forcefields(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
+    -> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer_count = scly.layers.len();
+    for i in 0..layer_count {
+        let layer = &mut scly.layers.as_mut_vec()[i];
+        layer.objects.as_mut_vec().retain(|obj| !is_forcefield(obj));
+    }
+    
+    Ok(())
+}
+
+/* Remove various forcefields in phazon mines so you can traverse their rooms backwards */
+fn make_remove_forcefields_patch<'a>(patcher: &mut PrimePatcher<'_, 'a>)
+{
+    patcher.add_scly_patch(
+        resource_info!("11_mines.MREA").into(), // Metroid Quarantine B
+        move |_ps, area| remove_forcefields(_ps, area),
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("01_mines_mainplaza.MREA").into(), // Main Quarry
+        move |_ps, area| remove_forcefields(_ps, area),
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("05_mines_forcefields.MREA").into(), // Elite Control
+        move |_ps, area| remove_forcefields(_ps, area),
+    );
+}
+
+fn patch_spawn_point_position<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+    new_position: Xyz,
+)
+-> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer_count = scly.layers.len();
+    for i in 0..layer_count {
+        let layer = &mut scly.layers.as_mut_vec()[i];
+        for obj in layer.objects.as_mut_vec().iter_mut() {
+            let _spawn_point = obj.property_data.as_spawn_point_mut();
+            if _spawn_point.is_none() {continue;}
+            let spawn_point = _spawn_point.unwrap();
+            
+            spawn_point.position[0] = new_position.x;
+            spawn_point.position[1] = new_position.y;
+            spawn_point.position[2] = new_position.z;
+            spawn_point.default_spawn = 1;
+            spawn_point.active = 1;
+            spawn_point.morphed = 1;
+        }
+    }
+
+    Ok(())
+}
+
+fn is_water<'r>(obj: &structs::SclyObject<'r>) -> bool {
+    let water = obj.property_data.as_water();
+    water.is_some()
+}
+
+fn is_underwater_sound<'r>(obj: &structs::SclyObject<'r>) -> bool {
+    let sound = obj.property_data.as_sound();
+    if sound.is_none() {
+        false // non-sounds are never underwater sounds
+    } else {
+        sound.unwrap().name.to_str().ok().unwrap().to_string().to_lowercase().contains("underwater") // we define underwater sounds by their name
+    }
+}
+
+/* Removes all water objects from the provided room */
+fn patch_remove_water<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+)
+-> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer_count = scly.layers.len();
+    for i in 0..layer_count {
+        let layer = &mut scly.layers.as_mut_vec()[i];
+        layer.objects.as_mut_vec().retain(|obj| !is_water(obj));
+        layer.objects.as_mut_vec().retain(|obj| !is_underwater_sound(obj));
+    }
+
+    Ok(())
+}
+
+fn patch_add_liquid<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+    liquid_volume: &LiquidVolume,
+    water_type: WaterType,
+    resources: &HashMap<(u32, FourCC), structs::Resource<'r>>,
+)
+-> Result<(), String>
+{
+    // add dependencies to area //
+    let deps = water_type.dependencies();
+    let deps_iter = deps.iter()
+        .map(|&(file_id, fourcc)| structs::Dependency {
+                asset_id: file_id,
+                asset_type: fourcc,
+        });
+
+    area.add_dependencies(resources, 0, deps_iter);
+    
+    let mut water_obj = water_type.to_obj();
+    let water = water_obj.property_data.as_water_mut().unwrap();
+    water.position[0] = liquid_volume.position.x;
+    water.position[1] = liquid_volume.position.y;
+    water.position[2] = liquid_volume.position.z;
+    water.scale[0]    = liquid_volume.size.x;
+    water.scale[1]    = liquid_volume.size.y;
+    water.scale[2]    = liquid_volume.size.z;
+
+    // add water to area //
+    let scly = area.mrea().scly_section_mut();
+    let layer = &mut scly.layers.as_mut_vec()[0];
+    layer.objects.as_mut_vec().push(water_obj);
+
+    Ok(())
+}
+
+fn patch_full_underwater<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+    resources: &HashMap<(u32, FourCC), structs::Resource<'r>>,
+)
+-> Result<(), String>
+{
+    let water_type = WaterType::Normal;
+
+    // add dependencies to area //
+    let deps = water_type.dependencies();
+    let deps_iter = deps.iter()
+        .map(|&(file_id, fourcc)| structs::Dependency {
+                asset_id: file_id,
+                asset_type: fourcc,
+        });
+
+    area.add_dependencies(resources, 0, deps_iter);
+    
+    let mut water_obj = water_type.to_obj();
+    let water = water_obj.property_data.as_water_mut().unwrap();
+    
+
+    let room_origin = {
+        let area_transform = area.mlvl_area.area_transform;
+
+        Xyz {
+            x: area_transform[3],
+            y: area_transform[7],
+            z: area_transform[11],
+        }
+    };
+
+    let bounding_box_untransformed = area.mlvl_area.area_bounding_box;
+
+    // transform bounding box by origin offset provided in area transform   //
+    // note that we are assuming the area transformation matrix is identity //
+    // on the premise that every door in the game is axis-aligned           //
+    let bounding_box_min = Xyz {
+        x: room_origin.x + bounding_box_untransformed[0],
+        y: room_origin.y + bounding_box_untransformed[1],
+        z: room_origin.z + bounding_box_untransformed[2],
+    };
+
+    let bounding_box_max = Xyz {
+        x: room_origin.x + bounding_box_untransformed[3],
+        y: room_origin.y + bounding_box_untransformed[4],
+        z: room_origin.z + bounding_box_untransformed[5],
+    };
+    
+    // The water's size is the difference in min/max //
+    water.scale[0] = (bounding_box_max.x - bounding_box_min.x).abs();
+    water.scale[1] = (bounding_box_max.y - bounding_box_min.y).abs();
+    water.scale[2] = (bounding_box_max.z - bounding_box_min.z).abs();
+
+    // The water is centered in the middle of the bounding box //
+    water.position[0] = bounding_box_min.x + (water.scale[0] / 2.0);
+    water.position[1] = bounding_box_min.y + (water.scale[1] / 2.0);
+    water.position[2] = bounding_box_min.z + (water.scale[2] / 2.0);
+
+    /*
+    println!("\nRoom ID = 0x{:X}",area.mrea_file_id());
+    println!("tranform matrix - {:?}", area.mlvl_area.area_transform);
+    println!("bounding box (untransformed) - {:?}", bounding_box_untransformed);
+    println!("bounding box (min) - {:?}", bounding_box_min);
+    println!("bounding box (max) - {:?}", bounding_box_max);
+    println!("water position - {:?}", water.position);
+    println!("water scale - {:?}", water.scale);
+    */
+
+    // add water to area //
+    let scly = area.mrea().scly_section_mut();
+    let layer = &mut scly.layers.as_mut_vec()[0];
+    layer.objects.as_mut_vec().push(water_obj);
+
+    Ok(())
+}
+
+fn patch_transform_bounding_box<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+    offset: Xyz,
+    scale: Xyz,
+)
+-> Result<(), String>
+{
+    let bb = area.mlvl_area.area_bounding_box;
+    let size = Xyz {
+        x: (bb[3] - bb[0]).abs(),
+        y: (bb[4] - bb[1]).abs(),
+        z: (bb[5] - bb[2]).abs(),
+    };
+
+    area.mlvl_area.area_bounding_box[0] = bb[0] + offset.x + (size.x*0.5 - (size.x*0.5)*scale.x);
+    area.mlvl_area.area_bounding_box[1] = bb[1] + offset.y + (size.y*0.5 - (size.y*0.5)*scale.y);
+    area.mlvl_area.area_bounding_box[2] = bb[2] + offset.z + (size.z*0.5 - (size.z*0.5)*scale.z);
+    area.mlvl_area.area_bounding_box[3] = bb[3] + offset.x - (size.x*0.5 - (size.x*0.5)*scale.x);
+    area.mlvl_area.area_bounding_box[4] = bb[4] + offset.y - (size.y*0.5 - (size.y*0.5)*scale.y);
+    area.mlvl_area.area_bounding_box[5] = bb[5] + offset.z - (size.z*0.5 - (size.z*0.5)*scale.z);
+
+    Ok(())
+}
+
+fn is_area_damage_special_function<'r>(obj: &structs::SclyObject<'r>)
+-> bool
+{
+    let special_function = obj.property_data.as_special_function();
+    
+    if special_function.is_none() {
+        false
+    }
+    else {
+        special_function.unwrap().type_ == 18 // is area damage type
+    }
+}
+
+fn patch_deheat_room<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+)
+-> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer_count = scly.layers.len();
+    for i in 0..layer_count {
+        let layer = &mut scly.layers.as_mut_vec()[i];
+        layer.objects.as_mut_vec().retain(|obj| !is_area_damage_special_function(obj));
+    }
+    
+    Ok(())
+}
+
+fn patch_superheated_room<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+)
+-> Result<(), String>
+{
+    let area_damage_special_function = structs::SclyObject
+    {
+        instance_id: 1310983,
+        connections: vec![
+            structs::Connection
+            {
+                state: structs::ConnectionState::ENTERED,
+                message: structs::ConnectionMsg::INCREMENT,
+                target_object_id: 1310984
+            },
+            structs::Connection
+            {
+                state: structs::ConnectionState::EXITED,
+                message: structs::ConnectionMsg::DECREMENT,
+                target_object_id: 1310984
+            },
+            structs::Connection
+            {
+                state: structs::ConnectionState::ENTERED,
+                message: structs::ConnectionMsg::ACTIVATE,
+                target_object_id: 1310985
+            },
+            structs::Connection
+            {
+                state: structs::ConnectionState::EXITED,
+                message: structs::ConnectionMsg::DEACTIVATE,
+                target_object_id: 1310985
+            },
+            structs::Connection
+            {
+                state: structs::ConnectionState::ENTERED,
+                message: structs::ConnectionMsg::ACTIVATE,
+                target_object_id: 1310986
+            },
+            structs::Connection
+            {
+                state: structs::ConnectionState::EXITED,
+                message: structs::ConnectionMsg::DEACTIVATE,
+                target_object_id: 1310986
+            },
+            structs::Connection
+            {
+                state: structs::ConnectionState::ENTERED,
+                message: structs::ConnectionMsg::PLAY,
+                target_object_id: 1310987
+            },
+            structs::Connection
+            {
+                state: structs::ConnectionState::EXITED,
+                message: structs::ConnectionMsg::STOP,
+                target_object_id: 1310987
+            },
+            structs::Connection
+            {
+                state: structs::ConnectionState::ENTERED,
+                message: structs::ConnectionMsg::SET_TO_ZERO,
+                target_object_id: 1310988
+            }
+        ].into(),
+        property_data: structs::SclyProperty::SpecialFunction(
+            structs::SpecialFunction
+            {
+                name: b"SpecialFunction Area Damage-component\0".as_cstr(),
+                position: [0., 0., 0.].into(),
+                rotation: [0., 0., 0.].into(),
+                type_: 18,
+                unknown0: b"\0".as_cstr(),
+                unknown1: 10.0,
+                unknown2: 0.0,
+                unknown3: 0.0,
+                layer_change_room_id: 4294967295,
+                layer_change_layer_id: 4294967295,
+                item_id: 0,
+                unknown4: 1,
+                unknown5: 0.0,
+                unknown6: 4294967295,
+                unknown7: 4294967295,
+                unknown8: 4294967295
+            }
+        ),
+    };
+
+    let scly = area.mrea().scly_section_mut();
+    let layer = &mut scly.layers.as_mut_vec()[0];
+    layer.objects.as_mut_vec().push(area_damage_special_function);
     Ok(())
 }
 
@@ -3264,8 +4077,9 @@ pub struct ParsedConfig
 
     pub suit_hue_rotate_angle: Option<i32>,
 
-    pub starting_items: StartingItems,
-    pub random_starting_items: StartingItems,
+    pub new_save_starting_items: u64,
+    pub frigate_done_starting_items: u64,
+
     pub comment: String,
     pub main_menu_message: String,
 
@@ -3749,36 +4563,45 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         }
     }
 
+    // add additional items //
+    for item in config.additional_items.iter()
+    {
+        let room = spawn_room_from_string(item.room.to_string());
+        patcher.add_scly_patch(
+            (room.pak_name.as_bytes(), room.mrea),
+            move |_ps, area| patch_add_item(_ps, area, PickupType::from_string(item.item_type.to_string()), item.position, pickup_resources, config),
+        );
+    }
+
     let rel_config;
     if config.skip_frigate {
         patcher.add_file_patch(
             b"default.dol",
             move |file| patch_dol(
                 file,
-                spawn_room,
+                new_save_spawn_room,
                 version,
                 config,
             )
         );
         patcher.add_file_patch(b"Metroid1.pak", empty_frigate_pak);
-        rel_config = create_rel_config_file(spawn_room, config.quickplay);
+        rel_config = create_rel_config_file(new_save_spawn_room, config.quickplay);
     } else {
             patcher.add_file_patch(
                 b"default.dol",
                 |file| patch_dol(
                     file,
-                    SpawnRoom::FrigateExteriorDockingHangar,
+                    new_save_spawn_room,
                     version,
                     config,
                 )
             );
-
             patcher.add_scly_patch(
-                (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
-                move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false, pickup_resources)
+                resource_info!("01_intro_hanger.MREA").into(),
+                move |_ps, area| patch_frigate_teleporter(area, frigate_done_spawn_room)
             );
             rel_config = create_rel_config_file(
-                SpawnRoom::FrigateExteriorDockingHangar,
+                new_save_spawn_room,
                 config.quickplay
             );
         }
@@ -3788,6 +4611,25 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             structs::FstEntryFile::ExternalFile(Box::new(rel_config)),
         )?;
 
+        // Patch the landing site to avoid loosing all items with custscene trigger //
+        patcher.add_scly_patch(
+            resource_info!("01_over_mainplaza.MREA").into(),
+            patch_landing_site_cutscene_triggers
+        );
+        
+        // New Save Room Starting Items //
+        patcher.add_scly_patch(
+            (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
+            move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false)
+        );
+
+        // Post Frigate Starting Items //
+        if !config.skip_frigate && frigate_done_spawn_room.mrea != new_save_spawn_room.mrea { // but only if it won't override an existing patch
+            patcher.add_scly_patch(
+                (frigate_done_spawn_room.pak_name.as_bytes(), frigate_done_spawn_room.mrea),
+                move |_ps, area| patch_starting_pickups(area, config.frigate_done_starting_items, false)
+            );
+        }
         patcher.add_resource_patch(
             resource_info!("STRG_Main.STRG").into(),// 0x0552a456
             |res| patch_main_strg(res, &config.main_menu_message)
@@ -3823,18 +4665,11 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
         patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
 
-    let show_starting_items = !config.random_starting_items.is_empty();
-    patcher.add_scly_patch(
-        (spawn_room.pak_name.as_bytes(), spawn_room.mrea),
-        move |_ps, area| patch_starting_pickups(
-            area,
-            &starting_items,
-            show_starting_items,
-            &pickup_resources,
-        )
-    );
+        if config.patch_power_conduits {
+            patch_power_conduits(&mut patcher);
+        }
 
-    patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
+        patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
 
         if config.remove_frigidite_lock {
             make_patch_elite_quarters_access(&mut patcher);
@@ -3844,7 +4679,22 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             make_remove_mine_security_station_locks_patch(&mut patcher);
         }
 
-    patch_heat_damage_per_sec(&mut patcher, config.heat_damage_per_sec);
+        if config.lower_mines_backwards {
+            make_remove_forcefields_patch(&mut patcher);
+        }
+
+        if config.remove_hall_of_the_elders_forcefield {
+            patcher.add_scly_patch(
+                resource_info!("17_chozo_bowling.MREA").into(), // Hall of the elders
+                move |_ps, area| remove_forcefields(_ps, area),
+            );
+        }
+
+	make_elevators_patch(&mut patcher, &elevator_layout, &config.elevator_layout_override, config.auto_enabled_elevators, config.tiny_elvetator_samus);
+
+        make_elite_research_fight_prereq_patches(&mut patcher);
+
+        patch_heat_damage_per_sec(&mut patcher, config.heat_damage_per_sec);
 
     patcher.add_scly_patch(
         resource_info!("22_Flaahgra.MREA").into(),
@@ -3966,10 +4816,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         );
     }
 
-    // If any of the elevators go straight to the ending, patch out the pre-credits cutscene.
-    let skip_ending_cinematic = elevator_layout.values()
-        .any(|sr| sr == &SpawnRoom::EndingCinematic);
-    if skip_ending_cinematic {
         patcher.add_scly_patch(
             resource_info!("18_ice_gravity_chamber.MREA").into(),
             patch_gravity_chamber_stalactite_grapple_point
@@ -4009,8 +4855,10 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             );
         }
 
-        let skip_ending_cutscene = true;
-        if skip_ending_cutscene {
+        // If any of the elevators go straight to the ending, patch out the pre-credits cutscene.
+    	let skip_ending_cinematic = elevator_layout.values()
+        .any(|sr| sr == &SpawnRoom::EndingCinematic);
+    	if skip_ending_cinematic {
             patcher.add_scly_patch(
                 resource_info!("01_endcinema.MREA").into(),
                 patch_ending_scene_straight_to_credits

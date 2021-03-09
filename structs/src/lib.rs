@@ -70,7 +70,6 @@ mod scly_props
     pub use self::streamed_audio::*;
     pub use self::timer::*;
     pub use self::trigger::*;
-    pub use self::water::*;
     pub use self::world_transporter::*;
 }
 pub use scly_props::structs as scly_structs;

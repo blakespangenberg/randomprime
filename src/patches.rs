@@ -2215,12 +2215,11 @@ fn make_main_plaza_locked_door_two_ways<'r>(
     locked_door.ancs.default_animation = 2;
     locked_door.projectiles_collide = 0;
 
-        let door_shield = layer.objects.as_mut_vec().iter_mut()
-            .find(|obj| obj.instance_id == actor_doorshield_id)
-            .and_then(|obj| obj.property_data.as_actor_mut())
-            .unwrap();
-        door_shield.cmdl = door_type.shield_cmdl();
-    }
+    let door_shield = layer.objects.as_mut_vec().iter_mut()
+        .find(|obj| obj.instance_id == actor_doorshield_id)
+        .and_then(|obj| obj.property_data.as_actor_mut())
+        .unwrap();
+    door_shield.cmdl = door_type.shield_cmdl();
     
     let trigger_remove_scan_target_locked_door_and_etank = layer.objects.as_mut_vec().iter_mut()
         .find(|obj| obj.instance_id == trigger_remove_scan_target_locked_door_id)
@@ -4166,4 +4165,5 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     patcher.run(gc_disc)?;
     Ok(())
+    }
 }

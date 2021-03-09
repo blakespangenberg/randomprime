@@ -3,7 +3,8 @@ use auto_struct_macros::auto_struct;
 use reader_writer::CStr;
 use reader_writer::typenum::*;
 use reader_writer::generic_array::GenericArray;
-use crate::SclyPropertyData;
+use crate::{ResId, SclyPropertyData};
+use crate::res_id::*;
 use crate::scly_props::structs::AncsProp;
 
 #[auto_struct(Readable, Writable)]
@@ -15,22 +16,33 @@ pub struct WorldTransporter<'r>
 
     pub name: CStr<'r>,
 
-    pub unknown0: u8,
-    pub mlvl: u32,
-    pub mrea: u32,
+    pub active: u8,
+    pub mlvl: ResId<MLVL>,
+    pub mrea: ResId<MREA>,
     pub ancs: AncsProp,
     pub player_scale: GenericArray<f32, U3>,
+<<<<<<< HEAD
     pub platform_model: u32,
     pub platform_scale: GenericArray<f32, U3>,
     pub background_model: u32,
+=======
+    pub platform_model: ResId<CMDL>,
+    pub platform_scale: GenericArray<f32, U3>,
+    pub background_model: ResId<CMDL>,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     pub background_scale: GenericArray<f32, U3>,
     pub up_elevator: u8,
     pub elevator_sound: u32,
     pub volume: u32,
     pub panning: u32,
     pub show_text: u8,
+<<<<<<< HEAD
     pub font: u32,
     pub strg: u32,
+=======
+    pub font: ResId<FONT>,
+    pub strg: ResId<STRG>,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     pub fade_white: u8,
     pub char_fade_in_time: f32,
     pub chars_per_second: f32,

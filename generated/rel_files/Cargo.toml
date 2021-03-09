@@ -1,0 +1,11 @@
+[package]
+name = "rel_files"
+version = "0.1.0"
+authors = ["April Wade <wayedt@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+
+[build-dependencies]
+walkdir = "2"
+dol_linker = { path = "../../dol_linker" }

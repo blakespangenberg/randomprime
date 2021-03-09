@@ -7,7 +7,12 @@ use clap::{
 };
 
 use randomprime::{
+<<<<<<< HEAD
     door_meta::Weights, extract_flaahgra_music_files, parse_layout, patches, reader_writer, structs
+=======
+    extract_flaahgra_music_files, patches, reader_writer,
+    starting_items::StartingItems, structs,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 };
 
 use std::{
@@ -267,13 +272,29 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         .arg(Arg::with_name("skip hudmenus")
             .long("non-modal-item-messages")
             .help("Display a non-modal message when an item is is acquired"))
+        .arg(Arg::with_name("etank capacity")
+            .long("etank-capacity")
+            .help("Set the etank capacity and base health")
+            .takes_value(true))
         .arg(Arg::with_name("nonvaria heat damage")
             .long("nonvaria-heat-damage")
             .help("If the Varia Suit has not been collect, heat damage applies"))
+        .arg(Arg::with_name("heat damage per sec")
+            .long("heat-damage-per-sec")
+            .help("Set the heat damage per seconds spent in a superheated room")
+            .takes_value(true))
         .arg(Arg::with_name("staggered suit damage")
             .long("staggered-suit-damage")
             .help(concat!("The suit damage reduction is determinted by the number of suits ",
                             "collected rather than the most powerful one collected.")))
+        .arg(Arg::with_name("max obtainable missiles")
+            .long("max-obtainable-missiles")
+            .help("Set the max amount of Missiles you can carry")
+            .takes_value(true))
+        .arg(Arg::with_name("max obtainable power bombs")
+            .long("max-obtainable-power-bombs")
+            .help("Set the max amount of Power Bombs you can carry")
+            .takes_value(true))
         .arg(Arg::with_name("auto enabled elevators")
             .long("auto-enabled-elevators")
             .help("Every elevator will be automatically enabled without scaning its terminal"))
@@ -298,6 +319,11 @@ fn get_config() -> Result<patches::ParsedConfig, String>
             .help(concat!("Location of a ISO of Metroid Prime Trilogy. If provided the ",
                             "Flaahgra fight music will be used to replace the original"))
             .takes_value(true))
+        .arg(Arg::with_name("suit hue rotate angle")
+            .long("suit-hue-rotate-angle")
+            .takes_value(true)
+            .validator(|s| s.parse::<i32>().map(|_| ())
+                                        .map_err(|_| "Expected an integer".to_string())))
         .arg(Arg::with_name("keep attract mode")
             .long("keep-attract-mode")
             .help("Keeps the attract mode FMVs, which are removed by default"))
@@ -311,6 +337,12 @@ fn get_config() -> Result<patches::ParsedConfig, String>
             .long("main-menu-message")
             .hidden(true)
             .takes_value(true))
+        .arg(Arg::with_name("random starting items")
+            .long("random-starting-items")
+            .hidden(true)
+            .takes_value(true)
+            .validator(|s| s.parse::<u64>().map(|_| ())
+                                        .map_err(|_| "Expected an integer".to_string())))
         .arg(Arg::with_name("change starting items")
             .long("starting-items")
             .hidden(true)
@@ -324,10 +356,6 @@ fn get_config() -> Result<patches::ParsedConfig, String>
                 .long("text-file-comment")
                 .hidden(true)
                 .takes_value(true))
-
-        .arg(Arg::with_name("pal override")
-            .long("pal-override")
-            .hidden(true))
         .get_matches();
 
     let json_path = matches.value_of("profile json path").unwrap();
@@ -358,8 +386,12 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         patches::IsoFormat::Iso
     };
 
+<<<<<<< HEAD
     let layout_string = String::from(&config.layout_string);
     let (pickup_layout, elevator_layout, item_seed) = parse_layout(&layout_string)?;
+=======
+    let layout = matches.value_of("pickup layout").unwrap().parse()?;
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     let seed = config.seed;
 
@@ -383,6 +415,7 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         None
     };
 
+<<<<<<< HEAD
     let mpdr_version = "Plando v1.7";
     let mut comment_message:String = "Generated with ".to_owned();
     comment_message.push_str(mpdr_version);
@@ -464,14 +497,63 @@ fn get_config() -> Result<patches::ParsedConfig, String>
 
         skip_impact_crater: config.patch_settings.skip_crater,
         enable_vault_ledge_door: config.patch_settings.enable_one_way_doors,
+=======
+    let random_starting_items = matches.value_of("random starting items")
+        .map(|s| StartingItems::from_u64(s.parse().unwrap()))
+        .unwrap_or(StartingItems::from_u64(0));
+
+    Ok(patches::ParsedConfig {
+        input_iso: input_iso_mmap,
+        output_iso: out_iso,
+
+        layout,
+
+        iso_format,
+        skip_hudmenus: matches.is_present("skip hudmenus"),
+        skip_frigate: matches.is_present("skip frigate"),
+        etank_capacity: matches.value_of("etank capacity")
+                                    .unwrap_or_default()
+                                    .parse::<u32>()
+                                    .unwrap_or(100),
+        nonvaria_heat_damage: matches.is_present("nonvaria heat damage"),
+        heat_damage_per_sec: matches.value_of("heat damage per sec")
+                                    .unwrap_or_default()
+                                    .parse::<f32>()
+                                    .unwrap_or(10.0),
+        staggered_suit_damage: matches.is_present("staggered suit damage"),
+        max_obtainable_missiles: matches.value_of("max obtainable missiles")
+                                    .unwrap_or_default()
+                                    .parse::<u32>()
+                                    .unwrap_or(250),
+        max_obtainable_power_bombs: matches.value_of("max obtainable power bombs")
+                                    .unwrap_or_default()
+                                    .parse::<u32>()
+                                    .unwrap_or(8),
+        keep_fmvs: matches.is_present("keep attract mode"),
+        obfuscate_items: matches.is_present("obfuscate items"),
+        auto_enabled_elevators: matches.is_present("auto enabled elevators"),
+        quiet: matches.is_present("quiet"),
+        enable_vault_ledge_door: matches.is_present("enable vault ledge door"),
+
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         artifact_hint_behavior,
         patch_vertical_to_blue: config.patch_settings.patch_vertical_to_blue,
         tiny_elvetator_samus: config.patch_settings.tiny_elvetator_samus,
 
         flaahgra_music_files,
+        suit_hue_rotate_angle: matches.value_of("suit hue rotate angle")
+                .map(|s| s.parse::<i32>().unwrap()),
 
+<<<<<<< HEAD
         new_save_starting_items,
         frigate_done_starting_items,
+=======
+        // XXX We can unwrap safely because we verified the parse earlier
+        starting_items: matches.value_of("change starting items")
+                                .map(|s| StartingItems::from_u64(s.parse().unwrap()))
+                                .unwrap_or_default(),
+        random_starting_items,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
         comment: comment_message,
         main_menu_message: String::from(mpdr_version),
@@ -481,11 +563,17 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         bnr_game_name: banner.as_mut().and_then(|b| b.game_name.take()),
         bnr_developer: banner.as_mut().and_then(|b| b.developer.take()),
 
+<<<<<<< HEAD
         bnr_game_name_full: banner.as_mut().and_then(|b| b.game_name_full.take()),
         bnr_developer_full: banner.as_mut().and_then(|b| b.developer_full.take()),
         bnr_description: banner.as_mut().and_then(|b| b.description.take()),
 
         pal_override: false,
+=======
+        bnr_game_name_full: None,
+        bnr_developer_full: None,
+        bnr_description: None,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     })
 
 }

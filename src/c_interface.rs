@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
 use serde::{Serialize, Deserialize};
 
@@ -9,8 +10,26 @@ use crate::{
 use std::{
     cell::Cell,
     collections::HashMap,
+=======
+
+
+use serde::{Serialize, Deserialize};
+
+use enum_map::EnumMap;
+use crate::Layout;
+use crate::elevators::{Elevator, SpawnRoom};
+use crate::patches;
+use crate::pickup_meta::PickupType;
+use crate::starting_items::StartingItems;
+
+use std::{
+    cell::Cell,
+    collections::hash_map::DefaultHasher,
+    convert::TryInto,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     ffi::{CStr, CString},
     fs::{File, OpenOptions},
+    hash::{Hash, Hasher},
     panic,
     path::Path,
     os::raw::c_char,
@@ -19,10 +38,13 @@ use std::{
 #[derive(Deserialize)]
 struct ConfigBanner
 {
+    #[serde(alias = "gameName")]
     game_name: Option<String>,
     developer: Option<String>,
 
+    #[serde(alias = "gameNameFull")]
     game_name_full: Option<String>,
+    #[serde(alias = "developerFull")]
     developer_full: Option<String>,
     description: Option<String>,
 }
@@ -69,51 +91,142 @@ struct Config {
 #[derive(Deserialize)]
 struct Config
 {
+    #[serde(alias = "inputIso")]
     input_iso: String,
+    #[serde(alias = "outputIso")]
     output_iso: String,
-    layout_string: String,
+    #[serde(alias = "layoutString")]
+    #[serde(alias = "layout_string")]
+    layout: LayoutWrapper,
 
     #[serde(default)]
+    #[serde(alias = "isoFormat")]
     iso_format: patches::IsoFormat,
 
     #[serde(default)]
+    #[serde(alias = "skipFrigate")]
     skip_frigate: bool,
     #[serde(default)]
+    #[serde(alias = "skipHudmemos")]
+    #[serde(alias = "skip_hudmemos")]
     skip_hudmenus: bool,
+    #[serde(alias = "etankCapacity")]
+    etank_capacity: Option<u32>,
     #[serde(default)]
+    #[serde(alias = "nonvariaHeatDamage")]
     nonvaria_heat_damage: bool,
+    #[serde(alias = "heatDamagePerSec")]
+    heat_damage_per_sec: Option<f32>,
     #[serde(default)]
+    #[serde(alias = "staggeredSuitDamage")]
     staggered_suit_damage: bool,
+    #[serde(alias = "maxObtainableMissiles")]
+    max_obtainable_missiles: Option<u32>,
+    #[serde(alias = "maxObtainablePowerBombs")]
+    max_obtainable_power_bombs: Option<u32>,
     #[serde(default)]
+    #[serde(alias = "obfuscateItems")]
     obfuscate_items: bool,
     #[serde(default)]
+    #[serde(alias = "autoEnabledElevators")]
     auto_enabled_elevators: bool,
 
+    // XXX Please don't use this. Instead just set an elevator to go straight to EndingCinematic
     #[serde(default)]
+    #[serde(alias = "skipImpactCrater")]
     skip_impact_crater: bool,
     #[serde(default)]
+    #[serde(alias = "enableVaultLedgeDoor")]
     enable_vault_ledge_door: bool,
     #[serde(default)]
+    #[serde(alias = "artifactHintBehavior")]
     artifact_hint_behavior: patches::ArtifactHintBehavior,
 
     #[serde(default)]
+    #[serde(alias = "trilogyDiscPath")]
     trilogy_disc_path: Option<String>,
 
     #[serde(default)]
+    #[serde(alias = "keepFmvs")]
     keep_fmvs: bool,
 
-    starting_items: Option<u64>,
+    #[serde(alias = "startingItems")]
+    starting_items: Option<StartingItemsWrapper>,
+    #[serde(alias = "randomStartingItems")]
+    random_starting_items: Option<StartingItemsWrapper>,
     #[serde(default)]
     comment: String,
     #[serde(default)]
+    #[serde(alias = "mainMenuMessage")]
     main_menu_message: String,
 
     banner: Option<ConfigBanner>,
 }*/
 
+
+fn default_starting_location() -> SpawnRoom
+{
+    SpawnRoom::LandingSite
+}
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum LayoutWrapper
+{
+    String(String),
+    Struct {
+        pickups: Vec<PickupType>,
+        #[serde(default = "default_starting_location")]
+        starting_location: SpawnRoom,
+        #[serde(default = "Elevator::default_layout")]
+        elevators: EnumMap<Elevator, SpawnRoom>,
+    },
+}
+
+impl TryInto<Layout> for LayoutWrapper
+{
+    type Error = String;
+    fn try_into(self) -> Result<Layout, Self::Error>
+    {
+        match self {
+            LayoutWrapper::String(s) => s.parse(),
+            LayoutWrapper::Struct { pickups, starting_location, elevators } => {
+                let mut hasher = DefaultHasher::new();
+                pickups.hash(&mut hasher);
+                starting_location.hash(&mut hasher);
+                elevators.hash(&mut hasher);
+                Ok(Layout {
+                    pickups,
+                    starting_location,
+                    elevators,
+                    seed: hasher.finish(),
+                })
+            },
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum StartingItemsWrapper
+{
+    Int(u64),
+    Struct(StartingItems),
+}
+
+impl Into<StartingItems> for StartingItemsWrapper
+{
+    fn into(self) -> StartingItems
+    {
+        match self {
+            StartingItemsWrapper::Struct(s) => s,
+            StartingItemsWrapper::Int(i) => StartingItems::from_u64(i),
+        }
+    }
+}
+
 #[derive(Serialize)]
 #[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 enum CbMessage<'a>
 {
     Success,
@@ -233,7 +346,7 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
     let config_json = unsafe { CStr::from_ptr(config_json) }.to_str()
         .map_err(|e| format!("JSON parse failed: {}", e))?;
 
-    let config: Config = serde_json::from_str(&config_json)
+    let mut config: Config = serde_json::from_str(&config_json)
         .map_err(|e| format!("JSON parse failed: {}", e))?;
 
     let input_iso_file = File::open(config.input_iso.trim())
@@ -248,7 +361,19 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
         .open(&config.output_iso)
         .map_err(|e| format!("Failed to open {}: {}", config.output_iso, e))?;
 
+<<<<<<< HEAD
     let layout_string = String::from(&config.layout_string);
+=======
+    let mut layout: Layout = config.layout.try_into()?;
+    // XXX Legacy compat :(
+    if config.skip_impact_crater {
+        for spawn_room in layout.elevators.values_mut() {
+            if *spawn_room == Elevator::CraterEntryPoint {
+                *spawn_room = SpawnRoom::EndingCinematic;
+            }
+        }
+    }
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     let (pickup_layout, elevator_layout, item_seed) = crate::parse_layout(&layout_string)?;
     let seed = config.seed;
@@ -263,6 +388,7 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
         None
     };
 
+<<<<<<< HEAD
     let config = config;
 
     let mut banner = Some(ConfigBanner {
@@ -307,32 +433,70 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
         keep_fmvs: false,
         obfuscate_items: false,
         auto_enabled_elevators: false,
+=======
+    let parsed_config = patches::ParsedConfig {
+        input_iso, output_iso,
+
+        layout,
+
+        iso_format: config.iso_format,
+        skip_frigate: config.skip_frigate,
+        skip_hudmenus: config.skip_hudmenus,
+        etank_capacity: config.etank_capacity.unwrap_or(100),
+        nonvaria_heat_damage: config.nonvaria_heat_damage,
+        heat_damage_per_sec: config.heat_damage_per_sec.unwrap_or(10.0),
+        staggered_suit_damage: config.staggered_suit_damage,
+        max_obtainable_missiles: config.max_obtainable_missiles.unwrap_or(250),
+        max_obtainable_power_bombs: config.max_obtainable_power_bombs.unwrap_or(8),
+        keep_fmvs: config.keep_fmvs,
+        obfuscate_items: config.obfuscate_items,
+        auto_enabled_elevators: config.auto_enabled_elevators,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         quiet: false,
         patch_vertical_to_blue: false,
         tiny_elvetator_samus: config.patch_settings.tiny_elvetator_samus,
 
+<<<<<<< HEAD
         skip_impact_crater: config.patch_settings.skip_crater,
         enable_vault_ledge_door: config.patch_settings.enable_one_way_doors,
         artifact_hint_behavior: patches::ArtifactHintBehavior::default(),
+=======
+        enable_vault_ledge_door: config.enable_vault_ledge_door,
+        artifact_hint_behavior: config.artifact_hint_behavior,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
         flaahgra_music_files,
+        suit_hue_rotate_angle: None,
 
+<<<<<<< HEAD
         new_save_starting_items: config.new_save_starting_items,
         frigate_done_starting_items: config.frigate_done_starting_items,
 
         comment: comment_message,
         main_menu_message: String::from(mpdr_version),
+=======
+        starting_items: config.starting_items.map(|i| i.into()).unwrap_or_default(),
+        random_starting_items: config.random_starting_items.map(|i| i.into()).unwrap_or(StartingItems::from_u64(0)),
+        comment: config.comment,
+        main_menu_message: config.main_menu_message,
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
         quickplay: false,
 
         bnr_game_name: banner.as_mut().and_then(|b| b.game_name.take()),
         bnr_developer: banner.as_mut().and_then(|b| b.developer.take()),
 
+<<<<<<< HEAD
         bnr_game_name_full: banner.as_mut().and_then(|b| b.game_name_full.take()),
         bnr_developer_full: banner.as_mut().and_then(|b| b.developer_full.take()),
         bnr_description: banner.as_mut().and_then(|b| b.description.take()),
 
         pal_override: false,
+=======
+        bnr_game_name_full: config.banner.as_mut().and_then(|b| b.game_name_full.take()),
+        bnr_developer_full: config.banner.as_mut().and_then(|b| b.developer_full.take()),
+        bnr_description: config.banner.as_mut().and_then(|b| b.description.take()),
+>>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     };
 
     let pn = ProgressNotifier::new(cb_data, cb);

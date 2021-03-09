@@ -1,16 +1,3 @@
-<<<<<<< HEAD
-/*
-use serde::{Serialize, Deserialize};
-
-use crate::{
-    patches,
-    door_meta::{Weights}
-};
-
-use std::{
-    cell::Cell,
-    collections::HashMap,
-=======
 
 
 use serde::{Serialize, Deserialize};
@@ -26,7 +13,6 @@ use std::{
     cell::Cell,
     collections::hash_map::DefaultHasher,
     convert::TryInto,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     ffi::{CStr, CString},
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
@@ -361,9 +347,6 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
         .open(&config.output_iso)
         .map_err(|e| format!("Failed to open {}: {}", config.output_iso, e))?;
 
-<<<<<<< HEAD
-    let layout_string = String::from(&config.layout_string);
-=======
     let mut layout: Layout = config.layout.try_into()?;
     // XXX Legacy compat :(
     if config.skip_impact_crater {
@@ -373,7 +356,6 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
             }
         }
     }
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     let (pickup_layout, elevator_layout, item_seed) = crate::parse_layout(&layout_string)?;
     let seed = config.seed;
@@ -388,52 +370,6 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
         None
     };
 
-<<<<<<< HEAD
-    let config = config;
-
-    let mut banner = Some(ConfigBanner {
-        game_name: Some(String::from("Metroid Prime")),
-        developer: Some(String::from("YonicStudios")),
-
-        game_name_full: Some(String::from("Metroid Prime Door Randomized")),
-        developer_full: Some(String::from("YonicStudios")),
-        description: Some(String::from("Metroid Prime, but door colors have been randomized")),
-    });
-
-    let mpdr_version = "MPDR v0.3";
-    let mut comment_message:String = "Generated with ".to_owned();
-    comment_message.push_str(mpdr_version);
-
-    let parsed_config = patches::ParsedConfig {
-        input_iso, output_iso,
-        is_item_randomized: None,
-        pickup_layout, elevator_layout, seed,
-        item_seed,door_weights:config.door_weights,
-        excluded_doors:config.excluded_doors,
-        patch_map:config.patch_settings.patch_map,
-        patch_power_conduits: config.patch_settings.patch_power_conduits,
-        remove_missile_locks: config.patch_settings.remove_missile_locks,
-        remove_frigidite_lock: config.patch_settings.remove_frigidite_lock,
-        remove_mine_security_station_locks: config.patch_settings.remove_mine_security_station_locks,
-        lower_mines_backwards: config.patch_settings.lower_mines_backwards,
-        superheated_rooms: config.superheated_rooms,
-
-        layout_string,
-        elevator_layout_override: config.elevator_layout_override,
-        missile_lock_override: config.missile_lock_override,
-        new_save_spawn_room: config.new_save_spawn_room,
-        frigate_done_spawn_room: config.frigate_done_spawn_room,
-
-        iso_format: patches::IsoFormat::Iso,
-        skip_frigate: config.patch_settings.skip_frigate,
-        skip_hudmenus: config.patch_settings.skip_hudmemos,
-        nonvaria_heat_damage: config.patch_settings.varia_heat_protection,
-        staggered_suit_damage: config.patch_settings.stagger_suit_damage,
-        powerbomb_lockpick: config.patch_settings.powerbomb_lockpick,
-        keep_fmvs: false,
-        obfuscate_items: false,
-        auto_enabled_elevators: false,
-=======
     let parsed_config = patches::ParsedConfig {
         input_iso, output_iso,
 
@@ -451,52 +387,29 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
         keep_fmvs: config.keep_fmvs,
         obfuscate_items: config.obfuscate_items,
         auto_enabled_elevators: config.auto_enabled_elevators,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         quiet: false,
         patch_vertical_to_blue: false,
         tiny_elvetator_samus: config.patch_settings.tiny_elvetator_samus,
 
-<<<<<<< HEAD
-        skip_impact_crater: config.patch_settings.skip_crater,
-        enable_vault_ledge_door: config.patch_settings.enable_one_way_doors,
-        artifact_hint_behavior: patches::ArtifactHintBehavior::default(),
-=======
         enable_vault_ledge_door: config.enable_vault_ledge_door,
         artifact_hint_behavior: config.artifact_hint_behavior,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
         flaahgra_music_files,
         suit_hue_rotate_angle: None,
 
-<<<<<<< HEAD
-        new_save_starting_items: config.new_save_starting_items,
-        frigate_done_starting_items: config.frigate_done_starting_items,
-
-        comment: comment_message,
-        main_menu_message: String::from(mpdr_version),
-=======
         starting_items: config.starting_items.map(|i| i.into()).unwrap_or_default(),
         random_starting_items: config.random_starting_items.map(|i| i.into()).unwrap_or(StartingItems::from_u64(0)),
         comment: config.comment,
         main_menu_message: config.main_menu_message,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
         quickplay: false,
 
         bnr_game_name: banner.as_mut().and_then(|b| b.game_name.take()),
         bnr_developer: banner.as_mut().and_then(|b| b.developer.take()),
 
-<<<<<<< HEAD
-        bnr_game_name_full: banner.as_mut().and_then(|b| b.game_name_full.take()),
-        bnr_developer_full: banner.as_mut().and_then(|b| b.developer_full.take()),
-        bnr_description: banner.as_mut().and_then(|b| b.description.take()),
-
-        pal_override: false,
-=======
         bnr_game_name_full: config.banner.as_mut().and_then(|b| b.game_name_full.take()),
         bnr_developer_full: config.banner.as_mut().and_then(|b| b.developer_full.take()),
         bnr_description: config.banner.as_mut().and_then(|b| b.description.take()),
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     };
 
     let pn = ProgressNotifier::new(cb_data, cb);

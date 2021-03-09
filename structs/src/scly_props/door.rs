@@ -27,14 +27,8 @@ pub struct Door<'r> {
     pub active: u8,
     pub open: u8,
     pub projectiles_collide: u8,
-<<<<<<< HEAD
-    pub animation_length: f32,
-    pub is_morphball: u8,
-
-=======
     pub open_close_animation_len: f32,
     pub is_morphball_door: u8,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 }
 
 impl<'r> SclyPropertyData for Door<'r> {

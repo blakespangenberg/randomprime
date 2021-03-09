@@ -104,24 +104,8 @@ pub struct ElevatorData {
     pub mlvl: u32,
     pub mrea: u32,
     pub mrea_idx: u32,
-<<<<<<< HEAD
-}
-
-impl SpawnRoom
-{
-    pub fn from_room_idx(idx: usize) -> SpawnRoom
-    {
-        if idx == 20 {
-            SpawnRoom::landing_site_spawn_room()
-        } else {
-            let elv = &ELEVATORS[idx];
-            elv.to_spawn_room()
-        }
-    }
-=======
     pub scly_id: u32,
     pub room_id: u32,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     pub room_strg: u32,
     pub hologram_strg: u32,

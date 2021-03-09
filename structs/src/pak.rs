@@ -244,13 +244,8 @@ impl<'r> InnerCursor<'r>
         if self.idx == 0 {
             (None, self.info_array)
         } else {
-<<<<<<< HEAD
-            let right = self.info_array.split_off(self.index);
-            (Some(f(self.info_array)), f(right))
-=======
             let left = self.info_array.split_off(self.idx);
             (Some(left), self.info_array)
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         }
    }
 

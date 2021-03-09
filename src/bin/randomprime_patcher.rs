@@ -7,12 +7,8 @@ use clap::{
 };
 
 use randomprime::{
-<<<<<<< HEAD
-    door_meta::Weights, extract_flaahgra_music_files, parse_layout, patches, reader_writer, structs
-=======
     extract_flaahgra_music_files, patches, reader_writer,
     starting_items::StartingItems, structs,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 };
 
 use std::{
@@ -386,12 +382,7 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         patches::IsoFormat::Iso
     };
 
-<<<<<<< HEAD
-    let layout_string = String::from(&config.layout_string);
-    let (pickup_layout, elevator_layout, item_seed) = parse_layout(&layout_string)?;
-=======
     let layout = matches.value_of("pickup layout").unwrap().parse()?;
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     let seed = config.seed;
 
@@ -415,89 +406,6 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         None
     };
 
-<<<<<<< HEAD
-    let mpdr_version = "Plando v1.7";
-    let mut comment_message:String = "Generated with ".to_owned();
-    comment_message.push_str(mpdr_version);
-
-    let mut banner = Some(ConfigBanner {
-        game_name: Some(String::from("Metroid Prime")),
-        developer: Some(String::from("^_^")),
-
-        game_name_full: Some(String::from("Metroid Prime Plandomizer")),
-        developer_full: Some(String::from("^_^")),
-        description: Some(String::from("Metroid Prime, but probably a cursed seed")),
-    });
-
-    let new_save_starting_items = {
-        if config.new_save_starting_items != 123456789 {
-            config.new_save_starting_items
-        }
-        else if config.starting_pickups != 123456789 {
-            config.starting_pickups
-        }
-        else {
-            assert!(false);
-            0
-        }
-    };
-    
-    let frigate_done_starting_items = {
-        if config.frigate_done_starting_items != 123456789 {
-            config.frigate_done_starting_items
-        }
-        else if config.starting_pickups != 123456789 {
-            config.starting_pickups
-        }
-        else {
-            assert!(false);
-            0
-        }
-    };
-
-    Ok(patches::ParsedConfig {
-        input_iso:input_iso_mmap,
-        output_iso:out_iso,
-        is_item_randomized: None,
-        pickup_layout, elevator_layout, seed,
-        item_seed,door_weights:config.door_weights,
-        excluded_doors:config.excluded_doors,
-        patch_map:config.patch_settings.patch_map,
-        patch_power_conduits: config.patch_settings.patch_power_conduits,
-        remove_missile_locks: config.patch_settings.remove_missile_locks,
-        remove_frigidite_lock: config.patch_settings.remove_frigidite_lock,
-        remove_mine_security_station_locks: config.patch_settings.remove_mine_security_station_locks,
-        lower_mines_backwards: config.patch_settings.lower_mines_backwards,
-        biohazard_containment_alt_spawn: config.patch_settings.biohazard_containment_alt_spawn,
-        remove_hall_of_the_elders_forcefield: config.patch_settings.remove_hall_of_the_elders_forcefield,
-        superheated_rooms: config.superheated_rooms,
-        deheated_rooms: config.deheated_rooms,
-        drain_liquid_rooms: config.drain_liquid_rooms,
-        underwater_rooms: config.underwater_rooms,
-        liquid_volumes: config.liquid_volumes,
-        aether_transforms: config.aether_transforms,
-        additional_items: config.additional_items,
-        
-        layout_string,
-        elevator_layout_override: config.elevator_layout_override,
-        missile_lock_override: config.missile_lock_override,
-        new_save_spawn_room: config.new_save_spawn_room,
-        frigate_done_spawn_room: config.frigate_done_spawn_room,
-
-        iso_format,
-        skip_frigate: config.patch_settings.skip_frigate,
-        skip_hudmenus: config.patch_settings.skip_hudmemos,
-        nonvaria_heat_damage: config.patch_settings.varia_heat_protection,
-        staggered_suit_damage: config.patch_settings.stagger_suit_damage,
-        powerbomb_lockpick: config.patch_settings.powerbomb_lockpick,
-        keep_fmvs: false,
-        obfuscate_items: config.patch_settings.obfuscate_items,
-        auto_enabled_elevators: config.patch_settings.auto_enabled_elevators,
-        quiet: false,
-
-        skip_impact_crater: config.patch_settings.skip_crater,
-        enable_vault_ledge_door: config.patch_settings.enable_one_way_doors,
-=======
     let random_starting_items = matches.value_of("random starting items")
         .map(|s| StartingItems::from_u64(s.parse().unwrap()))
         .unwrap_or(StartingItems::from_u64(0));
@@ -535,7 +443,6 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         quiet: matches.is_present("quiet"),
         enable_vault_ledge_door: matches.is_present("enable vault ledge door"),
 
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         artifact_hint_behavior,
         patch_vertical_to_blue: config.patch_settings.patch_vertical_to_blue,
         tiny_elvetator_samus: config.patch_settings.tiny_elvetator_samus,
@@ -544,16 +451,11 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         suit_hue_rotate_angle: matches.value_of("suit hue rotate angle")
                 .map(|s| s.parse::<i32>().unwrap()),
 
-<<<<<<< HEAD
-        new_save_starting_items,
-        frigate_done_starting_items,
-=======
         // XXX We can unwrap safely because we verified the parse earlier
         starting_items: matches.value_of("change starting items")
                                 .map(|s| StartingItems::from_u64(s.parse().unwrap()))
                                 .unwrap_or_default(),
         random_starting_items,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
         comment: comment_message,
         main_menu_message: String::from(mpdr_version),
@@ -563,17 +465,9 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         bnr_game_name: banner.as_mut().and_then(|b| b.game_name.take()),
         bnr_developer: banner.as_mut().and_then(|b| b.developer.take()),
 
-<<<<<<< HEAD
-        bnr_game_name_full: banner.as_mut().and_then(|b| b.game_name_full.take()),
-        bnr_developer_full: banner.as_mut().and_then(|b| b.developer_full.take()),
-        bnr_description: banner.as_mut().and_then(|b| b.description.take()),
-
-        pal_override: false,
-=======
         bnr_game_name_full: None,
         bnr_developer_full: None,
         bnr_description: None,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     })
 
 }

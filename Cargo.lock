@@ -328,16 +328,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "generic-array"
-version = "0.14.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
-dependencies = [
- "typenum",
- "version_check",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -571,7 +561,7 @@ name = "ppcasm"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "generic-array 0.13.2",
+ "generic-array",
  "ppcasm_macro",
 ]
 
@@ -695,7 +685,7 @@ name = "reader_writer"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "generic-array 0.14.4",
+ "generic-array",
 ]
 
 [[package]]

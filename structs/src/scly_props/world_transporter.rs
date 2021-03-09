@@ -21,28 +21,17 @@ pub struct WorldTransporter<'r>
     pub mrea: ResId<MREA>,
     pub ancs: AncsProp,
     pub player_scale: GenericArray<f32, U3>,
-<<<<<<< HEAD
-    pub platform_model: u32,
-    pub platform_scale: GenericArray<f32, U3>,
-    pub background_model: u32,
-=======
     pub platform_model: ResId<CMDL>,
     pub platform_scale: GenericArray<f32, U3>,
     pub background_model: ResId<CMDL>,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     pub background_scale: GenericArray<f32, U3>,
     pub up_elevator: u8,
     pub elevator_sound: u32,
     pub volume: u32,
     pub panning: u32,
     pub show_text: u8,
-<<<<<<< HEAD
-    pub font: u32,
-    pub strg: u32,
-=======
     pub font: ResId<FONT>,
     pub strg: ResId<STRG>,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     pub fade_white: u8,
     pub char_fade_in_time: f32,
     pub chars_per_second: f32,

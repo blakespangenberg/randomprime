@@ -12,15 +12,6 @@ use rand::{
     Rng,
     distributions::{Distribution,Uniform},
 };
-<<<<<<< HEAD
-
-use encoding::{
-    all::WINDOWS_1252,
-    Encoding,
-    EncoderTrap,
-};
-=======
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 use serde::Deserialize;
 
 use crate::{
@@ -32,11 +23,6 @@ use crate::{
     memmap,
     mlvl_wrapper,
     pickup_meta::{self, PickupType},
-<<<<<<< HEAD
-    door_meta::{DoorType, BlastShieldType, DoorLocation, Weights, World},
-    reader_writer,
-=======
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     patcher::{PatcherState, PrimePatcher},
     starting_items::StartingItems,
     txtr_conversions::{
@@ -112,11 +98,6 @@ const ALWAYS_MODAL_HUDMENUS: &[usize] = &[23, 50, 63];
 fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &StartingItems)
     -> HashMap<(u32, FourCC), structs::Resource<'r>>
 {
-<<<<<<< HEAD
-    // Get list of all dependencies patcher needs //
-=======
-
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     let mut looking_for: HashSet<_> = PickupType::iter()
         .flat_map(|pt| pt.dependencies().iter().cloned())
         .chain(PickupType::iter().map(|pt| pt.hudmemo_strg().into()))
@@ -125,19 +106,6 @@ fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &
     // Dependencies read from paks and custom assets will go here //
     let mut found = HashMap::with_capacity(looking_for.len());
 
-<<<<<<< HEAD
-    // Remove extra assets from dependency search since they won't appear     //
-    // in any pak. Instead add them to the output resource pool. These assets //
-    // are provided as external files checked into the repository.            //
-    let extra_assets = pickup_meta::extra_assets();
-    for res in extra_assets {
-        looking_for.remove(&(res.file_id, res.fourcc()));
-        assert!(found.insert((res.file_id, res.fourcc()), res.clone()).is_none());
-    }
-
-    // Iterate through all paks //
-=======
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     for pak_name in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) {
 
         // Get pak //
@@ -148,10 +116,6 @@ fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &
             _ => panic!(),
         };
 
-<<<<<<< HEAD
-        // Iterate through all resources in pak //
-=======
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         for res in pak.resources.iter() {
             // If this resource is a dependency needed by the patcher, add the resource to the output list //
             let key = (res.file_id, res.fourcc());
@@ -161,550 +125,7 @@ fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &
         }
     }
 
-<<<<<<< HEAD
-    // Finally, we need to add the assets which are generated rather than read from a file locally //
-    
-    // Generate assets for Nothing and Phazon Suit //
-    let mut new_assets = vec![];
-    new_assets.extend_from_slice(&create_suit_icon_cmdl_and_ancs(
-        &found,
-        custom_asset_ids::NOTHING_CMDL,
-        custom_asset_ids::NOTHING_ANCS,
-        custom_asset_ids::NOTHING_TXTR,
-        custom_asset_ids::PHAZON_SUIT_TXTR2,
-    ));
-    new_assets.extend_from_slice(&create_suit_icon_cmdl_and_ancs(
-        &found,
-        custom_asset_ids::PHAZON_SUIT_CMDL,
-        custom_asset_ids::PHAZON_SUIT_ANCS,
-        custom_asset_ids::PHAZON_SUIT_TXTR1,
-        custom_asset_ids::PHAZON_SUIT_TXTR2,
-    ));
-    new_assets.extend_from_slice(&create_item_scan_strg_pair(
-        custom_asset_ids::PHAZON_SUIT_SCAN,
-        custom_asset_ids::PHAZON_SUIT_STRG,
-        "Phazon Suit\0",
-    ));
-    new_assets.extend_from_slice(&create_item_scan_strg_pair(
-        custom_asset_ids::NOTHING_SCAN,
-        custom_asset_ids::NOTHING_SCAN_STRG,
-        "???\0",
-    ));
-    new_assets.push(pickup_meta::build_resource(
-        custom_asset_ids::NOTHING_ACQUIRED_HUDMEMO_STRG,
-        structs::ResourceKind::Strg(structs::Strg::from_strings(vec![
-            "&just=center;Nothing acquired!\0".to_owned(),
-        ])),
-    ));
-    new_assets.extend_from_slice(&create_item_scan_strg_pair(
-        custom_asset_ids::THERMAL_VISOR_SCAN,
-        custom_asset_ids::THERMAL_VISOR_STRG,
-        "Thermal Visor\0",
-    ));
-    new_assets.extend_from_slice(&create_item_scan_strg_pair(
-        custom_asset_ids::SCAN_VISOR_SCAN,
-        custom_asset_ids::SCAN_VISOR_SCAN_STRG,
-        "Scan Visor\0",
-    ));
-    new_assets.push(pickup_meta::build_resource(
-        custom_asset_ids::SCAN_VISOR_ACQUIRED_HUDMEMO_STRG,
-        structs::ResourceKind::Strg(structs::Strg::from_strings(vec![
-            "&just=center;Scan Visor acquired!\0".to_owned(),
-        ])),
-    ));
-    new_assets.extend_from_slice(&create_item_scan_strg_pair(
-        custom_asset_ids::SHINY_MISSILE_SCAN,
-        custom_asset_ids::SHINY_MISSILE_SCAN_STRG,
-        "Shiny Missile\0",
-    ));
-    new_assets.extend_from_slice(&create_shiny_missile_assets(&found));
-    new_assets.push(pickup_meta::build_resource(
-        custom_asset_ids::SHINY_MISSILE_ACQUIRED_HUDMEMO_STRG,
-        structs::ResourceKind::Strg(structs::Strg::from_strings(vec![
-            "&just=center;Shiny Missile acquired!\0".to_owned(),
-        ])),
-    ));
-
-    // Add the newly generated resources //
-    for res in new_assets {
-        let key = (res.file_id, res.fourcc());
-        if looking_for.remove(&key) {
-            assert!(found.insert(key, res).is_none());
-        }
-    }
-
-    assert!(looking_for.is_empty());
-
-    if !looking_for.is_empty()
-    {
-        println!("error - still looking for {:?}", looking_for);
-    }
-
-    found
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum WaterType {
-    Normal,
-    Poision,
-    Lava
-}
-
-impl WaterType
-{
-    pub fn iter() -> impl Iterator<Item = WaterType> {
-        [
-            WaterType::Normal,
-            WaterType::Poision,
-            WaterType::Lava,
-        ].iter().map(|i| *i)
-    }
-
-    fn dependencies(&self)
-    -> Vec<(u32, FourCC)> 
-    {   
-        let water_obj = self.to_obj();
-        let water = water_obj.property_data.as_water().unwrap();
-
-        let mut deps: Vec<(u32, FourCC)> = Vec::new();
-        deps.push((water.txtr1,            FourCC::from_bytes(b"TXTR")));
-        deps.push((water.txtr2,            FourCC::from_bytes(b"TXTR")));
-        deps.push((water.txtr3,            FourCC::from_bytes(b"TXTR")));
-        deps.push((water.txtr4,            FourCC::from_bytes(b"TXTR")));
-        deps.push((water.refl_map_txtr,    FourCC::from_bytes(b"TXTR")));
-        deps.push((water.txtr6,            FourCC::from_bytes(b"TXTR")));
-        deps.push((water.lightmap_txtr,    FourCC::from_bytes(b"TXTR")));
-        deps.push((water.small_enter_part, FourCC::from_bytes(b"PART")));
-        deps.push((water.med_enter_part,   FourCC::from_bytes(b"PART")));
-        deps.push((water.large_enter_part, FourCC::from_bytes(b"PART")));
-        deps.push((water.part4,            FourCC::from_bytes(b"PART")));
-        deps.push((water.part5,            FourCC::from_bytes(b"PART")));
-        deps.retain(|i| i.0 != 0xffffffff && i.0 != 0);
-        deps
-    }
-
-    fn to_obj<'r>(&self)
-    -> structs::SclyObject<'r>
-    {
-        match self {
-            WaterType::Normal  => structs::SclyObject {
-                instance_id: 0xFFFFFFFF,
-                connections: vec![].into(),
-                property_data: structs::SclyProperty::Water(
-                    structs::Water
-                    {
-                        name: b"normal water\0".as_cstr(),
-                        position: [ 0.0, 0.0, 0.0].into(),
-                        scale: [10.0, 10.0, 10.0].into(),
-                        damage_info: structs::structs::DamageInfo { weapon_type: 0, damage:  0.0, radius: 0.0, knockback_power: 0.0 },
-                        unknown1: [0.0, 0.0, 0.0].into(),
-                        unknown2: 2047,
-                        unknown3: 0,
-                        display_fluid_surface: 1,
-                        txtr1: 2003342689,
-                        txtr2: 4059883471,
-                        txtr3:  351283582,
-                        txtr4: 4294967295,
-                        refl_map_txtr: 4294967295,
-                        txtr6: 1899158552,
-                        unknown5: [3.0, 3.0, -4.0].into(),
-                        unkown6:  8.0,
-                        unkown7: 15.0,
-                        unkown8: 15.0,
-                        active: 1,
-                        fluid_type: 0,
-                        unkown11: 0,
-                        unkown12: 0.7,
-                        fluid_uv_motion:
-                            structs::FluidUVMotion
-                            {
-                                fluid_layer_motion1:
-                                structs::FluidLayerMotion
-                                    {
-                                        fluid_uv_motion: 2,
-                                        unknown1: 30.0,
-                                        unknown2: 90.0,
-                                        unknown3:  0.0,
-                                        unknown4:  4.0
-                                    },
-                                fluid_layer_motion2:
-                                structs::FluidLayerMotion
-                                    {
-                                        fluid_uv_motion: 0,
-                                        unknown1: 40.0,
-                                        unknown2: -180.0,
-                                        unknown3:  0.0,
-                                        unknown4: 20.0
-                                    },
-                                fluid_layer_motion3:
-                                structs::FluidLayerMotion
-                                    {
-                                        fluid_uv_motion: 0,
-                                        unknown1: 60.0,
-                                        unknown2: 0.0,
-                                        unknown3:  0.0,
-                                        unknown4: 25.0
-                                    },
-                                unknown1: 1000.0,
-                                unknown2: 0.0
-                            },
-                        unknown30:  0.0,
-                        unknown31:  10.0,
-                        unknown32: 1.0,
-                        unknown33: 1.0,
-                        unknown34: 0.0,
-                        unknown35: 90.0,
-                        unknown36: 0.0,
-                        unknown37: 0.0,
-                        unknown38: [1.0, 1.0, 1.0, 1.0].into(),
-                        unknown39: [0.411765, 0.670588, 0.831373, 1.0].into(),
-                        small_enter_part: 0xffffffff,
-                        med_enter_part: 0xffffffff,
-                        large_enter_part: 0xffffffff,
-                        part4: 0xffffffff,
-                        part5: 0xffffffff,
-                        sound1: 2499,
-                        sound2: 2499,
-                        sound3:  463,
-                        sound4:  464,
-                        sound5:  465,
-                        unknown40: 2.4,
-                        unknown41: 6,
-                        unknown42: 0.0,
-                        unknown43: 1.0,
-                        unknown44: 0.5,
-                        unknown45: 0.8,
-                        unknown46: 0.5,
-                        unknown47: 0.0,
-                        heat_wave_height: 0.0,
-                        heat_wave_speed: 1.0,
-                        heat_wave_color: [0.596078, 0.752941, 0.819608, 1.0].into(),
-                        lightmap_txtr: 4294967295,
-                        unknown51: 0.3,
-                        unknown52: 0.0,
-                        unknown53: 0.0,
-                        unknown54: 4294967295,
-                        unknown55: 4294967295,
-                        crash_the_game: 0
-                    }            
-                ),
-            },
-            WaterType::Poision => structs::SclyObject {
-                instance_id: 0xFFFFFFFF,
-                connections: vec![].into(),
-                property_data: structs::SclyProperty::Water(
-                    structs::Water {
-                name: b"poision water\0".as_cstr(),
-                position: [ 405.3748, -43.92318, 10.530313].into(),
-                scale: [13.0, 30.0, 1.0].into(),
-                damage_info:
-                    structs::structs::DamageInfo { weapon_type: 10,
-                    damage: 0.11,
-                    radius: 0.0,
-                    knockback_power: 0.0
-                    },
-                unknown1: [0.0, 0.0, 0.0].into(),
-                unknown2: 2047,
-                unknown3: 0,
-                display_fluid_surface: 1,
-                txtr1: 2671389366,
-                txtr2:  430856216,
-                txtr3: 1337209902,
-                txtr4: 4294967295,
-                refl_map_txtr: 4294967295,
-                txtr6: 1899158552,
-                unknown5: [3.0, 3.0, -4.0].into(),
-                unkown6: 48.0,
-                unkown7: 5.0,
-                unkown8: 5.0,
-                active: 1,
-                fluid_type: 1,
-                unkown11: 0,
-                unkown12: 0.8,
-                fluid_uv_motion:
-                structs::FluidUVMotion { fluid_layer_motion1: structs::FluidLayerMotion { fluid_uv_motion: 0,
-                unknown1: 20.0,
-                unknown2:  0.0,
-                unknown3: 0.15,
-                unknown4: 20.0},
-                fluid_layer_motion2:
-                structs::FluidLayerMotion { fluid_uv_motion: 0,
-                unknown1: 10.0,
-                unknown2:  180.0,
-                unknown3: 0.15,
-                unknown4: 10.0 },
-                fluid_layer_motion3: structs::FluidLayerMotion { fluid_uv_motion: 0,
-                unknown1: 40.0,
-                unknown2: 0.0,
-                unknown3: 0.15,
-                unknown4: 25.0 },
-                unknown1:  100.0,
-                unknown2: 0.0 },
-                unknown30: 20.0,
-                unknown31: 100.0,
-                unknown32: 1.0,
-                unknown33: 3.0,
-                unknown34: 0.0,
-                unknown35: 90.0,
-                unknown36: 0.0,
-                unknown37: 0.0,
-                unknown38: [1.0,
-                1.0,
-                1.0,
-                1.0].into(),
-                unknown39: [0.619608,
-                0.705882,
-                0.560784,
-                1.0].into(),
-                small_enter_part: 0xffffffff,
-                med_enter_part:   0xffffffff,
-                large_enter_part: 0xffffffff,
-                part4: 0xffffffff,
-                part5: 0xffffffff,
-                sound1: 2499,
-                sound2: 2499,
-                sound3:  463,
-                sound4:  464,
-                sound5:  465,
-                unknown40: 2.4,
-                unknown41: 6,
-                unknown42: 0.0,
-                unknown43: 1.0,
-                unknown44: 0.5,
-                unknown45: 0.8,
-                unknown46: 1.0,
-                unknown47: 0.0,
-                heat_wave_height: 0.0,
-                heat_wave_speed: 1.0,
-                heat_wave_color: [0.784314,
-                     1.0,
-                0.27451,
-                 1.0].into(),
-                lightmap_txtr: 4294967295,
-                unknown51: 0.3,
-                unknown52: 0.0,
-                unknown53: 0.0,
-                unknown54: 4294967295,
-                unknown55: 4294967295,
-                crash_the_game: 0
-            })},
-            WaterType::Lava    => structs::SclyObject {
-                instance_id: 0xFFFFFFFF,
-                connections: vec![].into(),
-                property_data: structs::SclyProperty::Water(
-                    structs::Water {
-                name: b"lava\0".as_cstr(),
-                position: [26.634968,
-                -14.81889,
-                 0.237813].into(),
-                scale: [41.601,
-                52.502003,
-                7.0010004].into(),
-                damage_info: structs::structs::DamageInfo { weapon_type: 11,
-                damage:  0.4,
-                radius: 0.0,
-                knockback_power: 0.0 },
-                unknown1: [0.0,
-                0.0,
-                0.0].into(),
-                unknown2: 2047,
-                unknown3: 1,
-                display_fluid_surface: 1,
-                txtr1:  117134624,
-                txtr2: 2154768270,
-                txtr3: 3598011320,
-                txtr4: 1249771730,
-                refl_map_txtr: 4294967295,
-                txtr6: 4294967295,
-                unknown5: [3.0,
-                3.0,
-                -4.0].into(),
-                unkown6: 70.0,
-                unkown7: 15.0,
-                unkown8: 15.0,
-                active: 1,
-                fluid_type: 2,
-                unkown11: 0,
-                unkown12: 0.65,
-                fluid_uv_motion: structs::FluidUVMotion { fluid_layer_motion1: structs::FluidLayerMotion { fluid_uv_motion: 0,
-                unknown1: 30.0,
-                unknown2:  0.0,
-                unknown3: 0.15,
-                unknown4: 10.0},
-                fluid_layer_motion2: structs::FluidLayerMotion { fluid_uv_motion: 0,
-                unknown1: 40.0,
-                unknown2:  180.0,
-                unknown3: 0.15,
-                unknown4: 20.0 },
-                fluid_layer_motion3: structs::FluidLayerMotion { fluid_uv_motion: 0,
-                unknown1: 45.0,
-                unknown2: 0.0,
-                unknown3: 0.15,
-                unknown4: 10.0 },
-                unknown1:   70.0,
-                unknown2: 0.0 },
-                unknown30: 20.0,
-                unknown31: 100.0,
-                unknown32: 1.0,
-                unknown33: 3.0,
-                unknown34: 0.0,
-                unknown35: 90.0,
-                unknown36: 0.0,
-                unknown37: 0.0,
-                unknown38: [1.0,
-                1.0,
-                1.0,
-                1.0].into(),
-                unknown39: [0.631373,
-                0.270588,
-                0.270588,
-                1.0].into(),
-                small_enter_part: 0xffffffff,
-                med_enter_part: 0xffffffff,
-                large_enter_part: 0xffffffff,
-                part4: 0xffffffff,
-                part5: 0xffffffff,
-                sound1: 2412,
-                sound2: 2412,
-                sound3: 1373,
-                sound4: 1374,
-                sound5: 1375,
-                unknown40: 2.4,
-                unknown41: 6,
-                unknown42: 0.0,
-                unknown43: 1.0,
-                unknown44: 0.5,
-                unknown45: 0.8,
-                unknown46: 0.5,
-                unknown47: 1.7,
-                heat_wave_height: 1.2,
-                heat_wave_speed: 1.0,
-                heat_wave_color: [1.0,
-                     0.682353,
-                0.294118,
-                1.0].into(),
-                lightmap_txtr: 4294967295,
-                unknown51: 0.3,
-                unknown52: 0.0,
-                unknown53: 0.0,
-                unknown54: 4294967295,
-                unknown55: 4294967295,
-                crash_the_game: 0
-            })},
-        }
-    }
-}
-
-fn collect_liquid_resources<'r>(gc_disc: &structs::GcDisc<'r>)
--> HashMap<(u32, FourCC), structs::Resource<'r>>{
-    // Get list of all dependencies needed by liquids //
-    let mut looking_for: HashSet<_> = WaterType::iter()
-        .flat_map(|pt| pt.dependencies().into_iter())
-        .collect();
-    
-    // Dependencies read from paks and custom assets will go here //
-    let mut found = HashMap::with_capacity(looking_for.len());
-
-    // Iterate through all paks and add add any dependencies to the resource pool //
-    for pak_name in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) { // for all paks
-
-        // get the pak //
-        let file_entry = gc_disc.find_file(pak_name).unwrap();
-        let pak = match *file_entry.file().unwrap() {
-            structs::FstEntryFile::Pak(ref pak) => Cow::Borrowed(pak),
-            structs::FstEntryFile::Unknown(ref reader) => Cow::Owned(reader.clone().read(())),
-            _ => panic!(),
-        };
-
-        // Iterate through all resources in the pak //
-        for res in pak.resources.iter() {
-            let key = (res.file_id, res.fourcc());
-            if looking_for.remove(&key) { // If it's one of our dependencies
-                assert!(found.insert(key, res.into_owned()).is_none()); // collect it
-            }
-        }
-    }
-
-    if !looking_for.is_empty()
-    {
-        println!("error - still looking for {:?}", looking_for);
-    }
-    assert!(looking_for.is_empty());
-    found
-}
-
-// Door assets are not shared across all areas either,
-// so we have to make a cache for them as well.
-fn collect_door_resources<'r>(gc_disc: &structs::GcDisc<'r>)
-    -> HashMap<(u32, FourCC), structs::Resource<'r>>
-{   
-    // Get list of all dependencies needed by custom doors //
-    
-    let mut looking_for = HashSet::<_>::new();
-
-    {
-        let looking_for_door: HashSet<_> = DoorType::iter()
-            .flat_map(|pt| pt.dependencies().into_iter())
-            .collect();
-
-        let looking_for_blast_shield: HashSet<_> = BlastShieldType::iter()
-            .flat_map(|pt| pt.dependencies().into_iter())
-            .collect();
-        
-        for (key, value) in looking_for_door.iter() {
-            looking_for.insert((*key, *value));
-        } 
-        for (key, value) in looking_for_blast_shield.iter() {
-            looking_for.insert((*key, *value));
-        }
-    }
-    
-    // Dependencies read from paks and custom assets will go here //
-    let mut found = HashMap::with_capacity(looking_for.len());
-
-    // Remove extra assets from dependency search since they won't appear     //
-    // in any pak. Instead add them to the output resource pool. These assets //
-    // are provided as external files checked into the repository.            //
-    let extra_assets = pickup_meta::extra_assets_doors();
-    for res in extra_assets {
-        looking_for.remove(&(res.file_id, res.fourcc()));
-        assert!(found.insert((res.file_id, res.fourcc()), res.clone()).is_none());
-    }
-
-    // Iterate through all paks and add add any dependencies to the resource pool //
-    for pak_name in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) { // for all paks
-
-        // get the pak //
-        let file_entry = gc_disc.find_file(pak_name).unwrap();
-        let pak = match *file_entry.file().unwrap() {
-            structs::FstEntryFile::Pak(ref pak) => Cow::Borrowed(pak),
-            structs::FstEntryFile::Unknown(ref reader) => Cow::Owned(reader.clone().read(())),
-            _ => panic!(),
-        };
-
-        // Iterate through all resources in the pak //
-        for res in pak.resources.iter() {
-            let key = (res.file_id, res.fourcc());
-            if looking_for.remove(&key) { // If it's one of our dependencies
-                assert!(found.insert(key, res.into_owned()).is_none()); // collect it
-            }
-        }
-    }
-
-    // Generate custom assets (new door variants) //
-    let mut new_assets = vec![];
-
-    for door_type in DoorType::iter() {
-        if door_type.shield_cmdl() >= 0xDEAF0000 {
-            new_assets.push(create_custom_door_cmdl(&found, door_type));
-        }
-    }
-
-    // Add the newly generated resources //
-    for res in new_assets {
-=======
     for res in crate::custom_assets::custom_assets(&found, starting_items) {
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         let key = (res.file_id, res.fourcc());
         looking_for.remove(&key);
         assert!(found.insert(key, res).is_none());
@@ -720,229 +141,6 @@ fn collect_door_resources<'r>(gc_disc: &structs::GcDisc<'r>)
     found
 }
 
-<<<<<<< HEAD
-fn create_custom_door_cmdl<'r>(
-    resources: &HashMap<(u32, FourCC),
-    structs::Resource<'r>>,
-    door_type: DoorType,
-) -> structs::Resource<'r>
-{
-    let new_cmdl_id: u32 = door_type.shield_cmdl();
-    let new_txtr_id: u32 = door_type.holorim_texture();
-
-    let new_door_cmdl = {
-        // Find and read the blue door CMDL
-        let blue_door_cmdl = {
-            if door_type.is_vertical() {
-                ResourceData::new(&resources[&resource_info!("18D0AEE6.CMDL").into()]) // actually white door but who cares
-            } else {
-                ResourceData::new(&resources[&resource_info!("blueShield_v1.CMDL").into()])
-            }
-        };
-
-        // Deserialize the blue door CMDL into a new mutable CMDL
-        let blue_door_cmdl_bytes = blue_door_cmdl.decompress().into_owned();
-        let mut new_cmdl = Reader::new(&blue_door_cmdl_bytes[..]).read::<structs::Cmdl>(());
-        
-        // Modify the new CMDL to make it unique
-        new_cmdl.material_sets.as_mut_vec()[0].texture_ids.as_mut_vec()[0] = new_txtr_id;
-        
-        // Re-serialize the CMDL //
-        let mut new_cmdl_bytes = vec![];
-        new_cmdl.write_to(&mut new_cmdl_bytes).unwrap();
-
-        // Pad length to multiple of 32 bytes //
-        let len = new_cmdl_bytes.len();
-        new_cmdl_bytes.extend(reader_writer::pad_bytes(32, len).iter());
-
-        // Assemble into a proper resource object
-        pickup_meta::build_resource(
-            new_cmdl_id, // Custom ids start with 0xDEAFxxxx
-            structs::ResourceKind::External(new_cmdl_bytes, b"CMDL".into())
-        )
-    };
-    
-    new_door_cmdl
-}
-
-fn create_suit_icon_cmdl_and_ancs<'r>(
-    resources: &HashMap<(u32, FourCC),
-    structs::Resource<'r>>,
-    new_cmdl_id: u32,
-    new_ancs_id: u32,
-    new_txtr1: u32,
-    new_txtr2: u32,
-) -> [structs::Resource<'r>; 2]
-{
-    let new_suit_cmdl = {
-        let grav_suit_cmdl = ResourceData::new(
-            &resources[&resource_info!("Node1_11.CMDL").into()]
-        );
-        let cmdl_bytes = grav_suit_cmdl.decompress().into_owned();
-        let mut cmdl = Reader::new(&cmdl_bytes[..]).read::<structs::Cmdl>(());
-
-        cmdl.material_sets.as_mut_vec()[0].texture_ids.as_mut_vec()[0] = new_txtr1;
-        cmdl.material_sets.as_mut_vec()[0].texture_ids.as_mut_vec()[3] = new_txtr2;
-
-        let mut new_cmdl_bytes = vec![];
-        cmdl.write_to(&mut new_cmdl_bytes).unwrap();
-
-        // Ensure the length is a multiple of 32
-        let len = new_cmdl_bytes.len();
-        new_cmdl_bytes.extend(reader_writer::pad_bytes(32, len).iter());
-
-        pickup_meta::build_resource(
-            new_cmdl_id,
-            structs::ResourceKind::External(new_cmdl_bytes, b"CMDL".into())
-        )
-    };
-    let new_suit_ancs = {
-        let grav_suit_ancs = ResourceData::new(
-            &resources[&resource_info!("Node1_11.ANCS").into()]
-        );
-        let ancs_bytes = grav_suit_ancs.decompress().into_owned();
-        let mut ancs = Reader::new(&ancs_bytes[..]).read::<structs::Ancs>(());
-
-        ancs.char_set.char_info.as_mut_vec()[0].cmdl = new_cmdl_id;
-
-        let mut new_ancs_bytes = vec![];
-        ancs.write_to(&mut new_ancs_bytes).unwrap();
-
-        // Ensure the length is a multiple of 32
-        let len = new_ancs_bytes.len();
-        new_ancs_bytes.extend(reader_writer::pad_bytes(32, len).iter());
-
-        pickup_meta::build_resource(
-            new_ancs_id,
-            structs::ResourceKind::External(new_ancs_bytes, b"ANCS".into())
-        )
-    };
-    [new_suit_cmdl, new_suit_ancs]
-}
-
-fn create_shiny_missile_assets<'r>(
-    resources: &HashMap<(u32, FourCC), structs::Resource<'r>>,
-) -> [structs::Resource<'r>; 4]
-{
-    let shiny_missile_cmdl = {
-        let shiny_missile_cmdl = ResourceData::new(
-            &resources[&resource_info!("Node1_36_0.CMDL").into()]
-        );
-        let cmdl_bytes = shiny_missile_cmdl.decompress().into_owned();
-        let mut cmdl = Reader::new(&cmdl_bytes[..]).read::<structs::Cmdl>(());
-
-        // println!("{:#?}", cmdl);
-        cmdl.material_sets.as_mut_vec()[0].texture_ids = vec![
-            custom_asset_ids::SHINY_MISSILE_TXTR0,
-            custom_asset_ids::SHINY_MISSILE_TXTR1,
-            custom_asset_ids::SHINY_MISSILE_TXTR2,
-        ].into();
-
-        let mut new_cmdl_bytes = vec![];
-        cmdl.write_to(&mut new_cmdl_bytes).unwrap();
-
-        // Ensure the length is a multiple of 32
-        let len = new_cmdl_bytes.len();
-        new_cmdl_bytes.extend(reader_writer::pad_bytes(32, len).iter());
-
-        pickup_meta::build_resource(
-            custom_asset_ids::SHINY_MISSILE_CMDL,
-            structs::ResourceKind::External(new_cmdl_bytes, b"CMDL".into())
-        )
-    };
-    let shiny_missile_ancs = {
-        let shiny_missile_ancs = ResourceData::new(
-            &resources[&resource_info!("Node1_37_0.ANCS").into()]
-        );
-        let ancs_bytes = shiny_missile_ancs.decompress().into_owned();
-        let mut ancs = Reader::new(&ancs_bytes[..]).read::<structs::Ancs>(());
-
-        ancs.char_set.char_info.as_mut_vec()[0].cmdl = custom_asset_ids::SHINY_MISSILE_CMDL;
-        ancs.char_set.char_info.as_mut_vec()[0].particles.part_assets = vec![
-            resource_info!("healthnew.PART").res_id
-        ].into();
-        if let Some(animation_resources) = &mut ancs.anim_set.animation_resources {
-            animation_resources.as_mut_vec()[0].evnt = custom_asset_ids::SHINY_MISSILE_EVNT;
-            animation_resources.as_mut_vec()[0].anim = custom_asset_ids::SHINY_MISSILE_ANIM;
-        }
-
-        match &mut ancs.anim_set.animations.as_mut_vec()[..] {
-            [structs::Animation { meta: structs::MetaAnimation::Play(play), .. }] => {
-                play.get_mut().anim = custom_asset_ids::SHINY_MISSILE_ANIM;
-            },
-            _ => panic!(),
-        }
-
-        let mut new_ancs_bytes = vec![];
-        ancs.write_to(&mut new_ancs_bytes).unwrap();
-
-        // Ensure the length is a multiple of 32
-        let len = new_ancs_bytes.len();
-        new_ancs_bytes.extend(reader_writer::pad_bytes(32, len).iter());
-
-        pickup_meta::build_resource(
-            custom_asset_ids::SHINY_MISSILE_ANCS,
-            structs::ResourceKind::External(new_ancs_bytes, b"ANCS".into())
-        )
-    };
-    let shiny_missile_evnt = {
-        let mut evnt = resources[&resource_info!("Missile_Launcher_ready.EVNT").into()]
-            .kind.as_evnt()
-            .unwrap().into_owned();
-
-
-        evnt.effect_events.as_mut_vec()[0].effect_file_id = resource_info!("healthnew.PART").res_id;
-        evnt.effect_events.as_mut_vec()[1].effect_file_id = resource_info!("healthnew.PART").res_id;
-
-        pickup_meta::build_resource(
-            custom_asset_ids::SHINY_MISSILE_EVNT,
-            structs::ResourceKind::Evnt(evnt)
-        )
-    };
-    let shiny_missile_anim = {
-        let shiny_missile_anim = ResourceData::new(
-            &resources[&resource_info!("Missile_Launcher_ready.ANIM").into()]
-        );
-        let mut anim_bytes = shiny_missile_anim.decompress().into_owned();
-        custom_asset_ids::SHINY_MISSILE_EVNT.write_to(&mut std::io::Cursor::new(&mut anim_bytes[8..])).unwrap();
-        let len = anim_bytes.len();
-        anim_bytes.extend(reader_writer::pad_bytes(32, len).iter());
-        pickup_meta::build_resource(
-            custom_asset_ids::SHINY_MISSILE_ANIM,
-            structs::ResourceKind::External(anim_bytes, b"ANIM".into())
-        )
-    };
-    [shiny_missile_cmdl, shiny_missile_ancs, shiny_missile_evnt, shiny_missile_anim]
-}
-
-fn create_item_scan_strg_pair<'r>(
-    new_scan: u32,
-    new_strg: u32,
-    contents: &str,
-) -> [structs::Resource<'r>; 2]
-{
-    let scan = pickup_meta::build_resource(
-        new_scan,
-        structs::ResourceKind::Scan(structs::Scan {
-            frme: 0xFFFFFFFF,
-            strg: new_strg,
-            scan_speed: 0,
-            category: 0,
-            icon_flag: 0,
-            images: Default::default(),
-            padding: [255; 23].into(),
-            _dummy: std::marker::PhantomData,
-        }),
-    );
-    let strg = pickup_meta::build_resource(
-        new_strg,
-        structs::ResourceKind::Strg(structs::Strg::from_strings(vec![contents.to_owned()])),
-    );
-    [scan, strg]
-}
-
-=======
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 fn artifact_layer_change_template<'r>(instance_id: u32, pickup_kind: u32)
     -> structs::SclyObject<'r>
 {
@@ -1592,28 +790,12 @@ fn rotate(mut coordinate: [f32; 3], mut rotation: [f32; 3], center: [f32; 3])
 
 fn make_elevators_patch<'a>(
     patcher: &mut PrimePatcher<'_, 'a>,
-<<<<<<< HEAD
-    layout: &'a [Elevator],
-    dest_names: &Vec<String>,
-=======
     layout: &'a EnumMap<Elevator, SpawnRoom>,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     auto_enabled_elevators: bool,
     tiny_elvetator_samus: bool,
 )
 {
-<<<<<<< HEAD
-    let mut idx = 0;
-    for (elv, dest) in ELEVATORS.iter().zip(layout) {
-        if elv.pak_name.len() == 0 {
-            // Skip destination only elevators
-            idx = idx + 1;
-            continue
-        }
-
-=======
     for (elv, dest) in layout.iter() {
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         patcher.add_scly_patch((elv.pak_name.as_bytes(), elv.mrea), move |ps, area| {
             let scly = area.mrea().scly_section_mut();
             for layer in scly.layers.iter_mut() {
@@ -1621,19 +803,8 @@ fn make_elevators_patch<'a>(
                     .find(|obj| obj.instance_id == elv.scly_id);
                 if let Some(obj) = obj {
                     let wt = obj.property_data.as_world_transporter_mut().unwrap();
-<<<<<<< HEAD
-                    wt.mrea = dest.mrea;
-                    wt.mlvl = dest.mlvl;
-                    wt.volume = 0; // if we don't turn down the volume of the "wooshing" effect, the player will hear it indefinitely if the destination isn't a WorldTransporter
-                    
-                    if tiny_elvetator_samus
-                    {
-                        wt.player_scale = [0.33,0.33,0.33].into();
-                    }
-=======
                     wt.mrea = ResId::new(dest.mrea);
                     wt.mlvl = ResId::new(dest.mlvl);
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
                 }
             }
 
@@ -2899,58 +2070,6 @@ fn make_main_plaza_locked_door_two_ways<'r>(
 
         structs::SclyObject {
             instance_id: actor_doorshield_id,
-<<<<<<< HEAD
-            property_data: structs::SclyProperty::Actor(structs::Actor {
-                    name: b"Actor_DoorShield\0".as_cstr(),
-                    position: [151.951187, 86.412575, 24.403177].into(),
-                    rotation: [0.0, 0.0, 0.0].into(),
-                    scale: [1.0, 1.0, 1.0].into(),
-                    hitbox: [0.0, 0.0, 0.0].into(),
-                    scan_offset: [0.0, 0.0, 0.0].into(),
-                    unknown1: 1.0,
-                    unknown2: 0.0,
-                    health_info: structs::structs::HealthInfo {
-                        health: 5.0,
-                        knockback_resistance: 1.0
-                    },
-                    damage_vulnerability: structs::structs::DamageVulnerability {
-                        power: 1,           // Normal
-                        ice: 1,             // Normal
-                        wave: 1,            // Normal
-                        plasma: 1,          // Normal
-                        bomb: 1,            // Normal
-                        power_bomb: 1,      // Normal
-                        missile: 1,         // Normal
-                        boost_ball: 1,      // Normal
-                        phazon: 1,          // Normal
-                        enemy_weapon0: 2,   // Reflect
-                        enemy_weapon1: 2,   // Reflect
-                        enemy_weapon2: 2,   // Reflect
-                        enemy_weapon3: 2,   // Reflect
-                        unknown_weapon0: 2, // Reflect
-                        unknown_weapon1: 2, // Reflect
-                        unknown_weapon2: 0, // Double Damage
-                        charged_beams: structs::structs::ChargedBeams {
-                            power: 1,       // Normal
-                            ice: 1,         // Normal
-                            wave: 1,        // Normal
-                            plasma: 1,      // Normal
-                            phazon: 0       // Double Damage
-                        },
-                        beam_combos: structs::structs::BeamCombos {
-                            power: 1,       // Normal
-                            ice: 1,         // Normal
-                            wave: 1,        // Normal
-                            plasma: 1,      // Normal
-                            phazon: 0       // Double Damage
-                        }
-                    },
-                    cmdl: 0x0734977A, // blueShield_v1.CMDL
-                    ancs: structs::structs::AncsProp {
-                        file_id: 0xFFFFFFFF, // None
-                        node_index: 0,
-                        unknown: 0xFFFFFFFF, // -1
-=======
             property_data: structs::Actor {
                 name: b"Actor_DoorShield\0".as_cstr(),
                 position: [151.951187, 86.412575, 24.403177].into(),
@@ -2987,7 +2106,6 @@ fn make_main_plaza_locked_door_two_ways<'r>(
                         wave: 1,        // Normal
                         plasma: 1,      // Normal
                         phazon: 0       // Double Damage
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
                     },
                     beam_combos: structs::scly_structs::BeamCombos {
                         power: 1,       // Normal
@@ -3093,30 +2211,9 @@ fn make_main_plaza_locked_door_two_ways<'r>(
         .find(|obj| obj.instance_id == door_id)
         .and_then(|obj| obj.property_data.as_door_mut())
         .unwrap();
-<<<<<<< HEAD
-    locked_door.ancs.file_id = 0x26886945; // newmetroiddoor.ANCS
-    locked_door.ancs.unknown = 2;
-    locked_door.projectiles_collide = 0;
-
-    {
-        let door_force = layer.objects.as_mut_vec().iter_mut()
-            .find(|obj| obj.instance_id == trigger_doorunlock_id)
-            .and_then(|obj| obj.property_data.as_damageable_trigger_mut())
-            .unwrap();
-        door_force.color_txtr = door_type.forcefield_txtr();
-
-        door_force.damage_vulnerability = door_type.vulnerability();
-
-        if door_type != DoorType::Blue && !config.powerbomb_lockpick {
-            door_force.damage_vulnerability.power_bomb = 2;
-        } else {
-            door_force.damage_vulnerability.power_bomb = 1;
-        }
-=======
     locked_door.ancs.file_id = resource_info!("newmetroiddoor.ANCS").try_into().unwrap();
     locked_door.ancs.default_animation = 2;
     locked_door.projectiles_collide = 0;
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
         let door_shield = layer.objects.as_mut_vec().iter_mut()
             .find(|obj| obj.instance_id == actor_doorshield_id)
@@ -3184,17 +2281,6 @@ fn make_main_plaza_locked_door_two_ways<'r>(
     Ok(())
 }
 
-<<<<<<< HEAD
-fn patch_main_plaza_locked_door_map_icon(res: &mut structs::Resource,door_type:DoorType)
-    -> Result<(),String> {
-    let mapa = res.kind.as_mapa_mut().unwrap();
-
-    let door_icon = mapa.objects.iter_mut()
-    .find(|obj| obj.editor_id == 0x20060)
-    .unwrap();
-    
-    door_icon.type_ = door_type.map_object_type();
-=======
 fn patch_arboretum_invisible_wall(
     _ps: &mut PatcherState,
     area: &mut mlvl_wrapper::MlvlArea,
@@ -3250,7 +2336,6 @@ fn patch_main_quarry_barrier(_ps: &mut PatcherState, area: &mut mlvl_wrapper::Ml
             ].into(),
         }
     );
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     Ok(())
 }
@@ -3290,748 +2375,6 @@ fn patch_hive_totem_boss_trigger_0_02(_ps: &mut PatcherState, area: &mut mlvl_wr
     Ok(())
 }
 
-<<<<<<< HEAD
-fn patch_ruined_courtyard_thermal_conduits_0_02(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
-    -> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer = &mut scly.layers.as_mut_vec()[0];
-
-    let thermal_conduit_actor_obj_id = 0xF01C7;
-    let thermal_conduit_damageable_trigger_obj_id = 0xF01C8;
-
-    let thermal_conduit_actor_obj = layer.objects.as_mut_vec().iter_mut()
-        .find(|obj| obj.instance_id == thermal_conduit_actor_obj_id)
-        .and_then(|obj| obj.property_data.as_actor_mut())
-        .unwrap();
-    thermal_conduit_actor_obj.active = 1;
-
-    let thermal_conduit_damageable_trigger_obj = layer.objects.as_mut_vec().iter_mut()
-        .find(|obj| obj.instance_id == thermal_conduit_damageable_trigger_obj_id)
-        .and_then(|obj| obj.property_data.as_damageable_trigger_mut())
-        .unwrap();
-    thermal_conduit_damageable_trigger_obj.active = 1;
-
-    Ok(())
-}
-
-fn patch_thermal_conduits_damage_vulnerabilities(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
-    -> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer = &mut scly.layers.as_mut_vec()[0];
-
-    let thermal_conduit_damageable_trigger_obj_ids = [
-        0x000F01C8, // ruined courtyard
-        0x0028043F, // research core
-        0x0015006C, // main ventilation shaft section b
-        0x0019002C, // reactor core
-        0x00190030, // reactor core
-        0x0019002E, // reactor core
-        0x00190029, // reactor core
-        0x001A006C, // reactor core access
-        0x001A006D, // reactor core access
-        0x001B008E, // cargo freight lift to deck gamma
-        0x001B008F, // cargo freight lift to deck gamma
-        0x001B0090, // cargo freight lift to deck gamma
-        0x001E01DC, // biohazard containment
-        0x001E01E1, // biohazard containment
-        0x001E01E0, // biohazard containment
-        0x0020002A, // biotech research area 1
-        0x00200030, // biotech research area 1
-        0x0020002E, // biotech research area 1
-        0x0002024C, // main quarry
-    ];
-    
-    for obj in layer.objects.as_mut_vec().iter_mut() {
-        if thermal_conduit_damageable_trigger_obj_ids.contains(&obj.instance_id) {
-            let dt = obj.property_data.as_damageable_trigger_mut().unwrap();
-            dt.damage_vulnerability = DoorType::Blue.vulnerability();
-            dt.health_info.health = 1.0; // single power beam shot
-        }
-    }
-
-    Ok(())
-}
-
-fn patch_power_conduits<'a>(patcher: &mut PrimePatcher<'_, 'a>)
-{
-    patcher.add_scly_patch(
-        resource_info!("05_ice_shorelines.MREA").into(), // ruined courtyard
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-
-    patcher.add_scly_patch(
-        resource_info!("13_ice_vault.MREA").into(), // research core
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-    
-    patcher.add_scly_patch(
-        resource_info!("08b_under_intro_ventshaft.MREA").into(), // Main Ventilation Shaft Section B
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-
-    patcher.add_scly_patch(
-        resource_info!("07_under_intro_reactor.MREA").into(), // reactor core
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-    
-    patcher.add_scly_patch(
-        resource_info!("06_under_intro_to_reactor.MREA").into(), // reactor core access
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-    
-    patcher.add_scly_patch(
-        resource_info!("06_under_intro_freight.MREA").into(), // cargo freight lift to deck gamma
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-    
-    patcher.add_scly_patch(
-        resource_info!("05_under_intro_zoo.MREA").into(), // biohazard containment
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-    
-    patcher.add_scly_patch(
-        resource_info!("05_under_intro_specimen_chamber.MREA").into(), // biotech research area 1
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-    
-    patcher.add_scly_patch(
-        resource_info!("01_mines_mainplaza.MREA").into(), // main quarry
-        patch_thermal_conduits_damage_vulnerabilities
-    );
-
-    // Note the magmoor ones are missing on purpose
-}
-
-fn is_missile_lock<'r>(obj: &structs::SclyObject<'r>) -> bool {
-    let actor = obj.property_data.as_actor();
-    
-    if actor.is_none() {
-        false // non-actors are never missile locks
-    }
-    else {
-        actor.unwrap().cmdl == 0xEFDFFB8C // missile locks are indentified by their model
-    }
-}
-
-fn patch_remove_missile_lock<'r>(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
-    -> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer = &mut scly.layers.as_mut_vec()[0];
-    
-    // keep everything except for missile locks //
-    layer.objects.as_mut_vec().retain(|obj| !is_missile_lock(obj));
-
-    Ok(())
-}
-
-fn remove_missile_locks<'a>(patcher: &mut PrimePatcher<'_, 'a>, overrides: &Vec<bool>)
-{
-    let mut idx = 0;
-
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("00j_over_hall.MREA").into(), // Temple Security Station
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("00a_over_hall.MREA").into(), // Waterfall Cavern
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("06_over_crashed_ship.MREA").into(), // Frigate Crash Site
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("00m_over_hall.MREA").into(), // Root Tunnel
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("03_over_rootcave.MREA").into(), // Root Cave
-            patch_remove_missile_lock,
-        );    
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("01_mainplaza.MREA").into(), // Main Plaza
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("19_hive_totem.MREA").into(), // Hive Totem
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("0b_connect_tunnel.MREA").into(), // Arboretum Access
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("08_courtyard.MREA").into(), // Arboretum (x2)
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("10_coreentrance.MREA").into(), // Gathering Hall
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("0e_connect_tunnel.MREA").into(), // Watery Hall Access
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("11_wateryhall.MREA").into(), // Watery Hall
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("monkey_shaft.MREA").into(), // Dynamo Access
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("18_halfpipe.MREA").into(), // Crossway
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("20_reflecting_pool.MREA").into(), // Reflecting Pool (x2)
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("15_over_burningtrail.MREA").into(), // Burning Trail
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("00_lava_elev_ice_d.MREA").into(), // Transport to Phendrana Drifts South
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("03_ice_ruins_b.MREA").into(), // Ice Ruins West
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("generic_z6.MREA").into(), // Canyon Entryway
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-    
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("05_ice_shorelines.MREA").into(), // Ruined Courtyard
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("11_ice_observatory.MREA").into(), // Observatory
-            patch_remove_missile_lock,
-        );
-    }
-    idx = idx + 1;
-
-    if overrides.len() <= idx || !overrides[idx] {
-        patcher.add_scly_patch(
-            resource_info!("03_monkey_upper.MREA").into(), // Ruined Gallery
-            patch_remove_missile_lock,
-        );
-    }
-}
-
-
-fn elite_quarters_access_should_keep<'r>(obj: &structs::SclyObject<'r>) -> bool {
-    let platform = obj.property_data.as_platform();
-    platform.is_none() // keep everything that isn't a platform
-}
-
-fn patch_elite_quarters_access(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
-    -> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer = &mut scly.layers.as_mut_vec()[1];
-    layer.objects.as_mut_vec().retain(|obj| elite_quarters_access_should_keep(obj));
-
-    Ok(())
-}
-
-/* removed the beams blocking elite quarters, removing the need for plasma beam */
-fn make_patch_elite_quarters_access<'a>(patcher: &mut PrimePatcher<'_, 'a>)
-{
-    patcher.add_scly_patch(
-        resource_info!("00o_mines_connect.MREA").into(), // Elite Quarters Access
-        patch_elite_quarters_access,
-    );
-}
-
-fn is_door_lock<'r>(obj: &structs::SclyObject<'r>) -> bool {
-    let actor = obj.property_data.as_actor();
-    
-    if actor.is_none() {
-        false // non-actors are never door locks
-    }
-    else {
-        let _actor = actor.unwrap();
-        _actor.cmdl == 0x5391EDB6 || _actor.cmdl == 0x6E5D6796 // door locks are indentified by their model (check for both horizontal and vertical variants)
-    }
-}
-
-fn remove_mine_security_station_locks(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
-    -> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer = &mut scly.layers.as_mut_vec()[0];
-    layer.objects.as_mut_vec().retain(|obj| !is_door_lock(obj));  // keep everything that isn't a door lock
-    
-    Ok(())
-}
-
-/* remove the door locks that appear in mine security station so that 
-   the room can be completed without wave beam */
-fn make_remove_mine_security_station_locks_patch<'a>(patcher: &mut PrimePatcher<'_, 'a>)
-{
-    patcher.add_scly_patch(
-        resource_info!("02_mines_shotemup.MREA").into(), // Mines Security Station
-        remove_mine_security_station_locks,
-    );
-}
-
-fn is_forcefield<'r>(obj: &structs::SclyObject<'r>) -> bool {
-    if obj.instance_id == 271843679 { // hall of the elders forcefield (PWE shows the wrong instance ID for some reason)
-        return true;
-    }
-
-    let actor = obj.property_data.as_actor();
-    
-    if actor.is_none() {
-        false
-    }
-    else {
-        let _actor = actor.unwrap();
-        _actor.cmdl == 0xD793FEC8 || _actor.cmdl == 0x3FCDAF2C // orange forcefields
-    }
-}
-
-fn remove_forcefields(_ps: &mut PatcherState, area: &mut mlvl_wrapper::MlvlArea)
-    -> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer_count = scly.layers.len();
-    for i in 0..layer_count {
-        let layer = &mut scly.layers.as_mut_vec()[i];
-        layer.objects.as_mut_vec().retain(|obj| !is_forcefield(obj));
-    }
-    
-    Ok(())
-}
-
-/* Remove various forcefields in phazon mines so you can traverse their rooms backwards */
-fn make_remove_forcefields_patch<'a>(patcher: &mut PrimePatcher<'_, 'a>)
-{
-    patcher.add_scly_patch(
-        resource_info!("11_mines.MREA").into(), // Metroid Quarantine B
-        move |_ps, area| remove_forcefields(_ps, area),
-    );
-
-    patcher.add_scly_patch(
-        resource_info!("01_mines_mainplaza.MREA").into(), // Main Quarry
-        move |_ps, area| remove_forcefields(_ps, area),
-    );
-
-    patcher.add_scly_patch(
-        resource_info!("05_mines_forcefields.MREA").into(), // Elite Control
-        move |_ps, area| remove_forcefields(_ps, area),
-    );
-}
-
-fn patch_spawn_point_position<'r>(
-    _ps: &mut PatcherState,
-    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
-    new_position: Xyz,
-)
--> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer_count = scly.layers.len();
-    for i in 0..layer_count {
-        let layer = &mut scly.layers.as_mut_vec()[i];
-        for obj in layer.objects.as_mut_vec().iter_mut() {
-            let _spawn_point = obj.property_data.as_spawn_point_mut();
-            if _spawn_point.is_none() {continue;}
-            let spawn_point = _spawn_point.unwrap();
-            
-            spawn_point.position[0] = new_position.x;
-            spawn_point.position[1] = new_position.y;
-            spawn_point.position[2] = new_position.z;
-            spawn_point.default_spawn = 1;
-            spawn_point.active = 1;
-            spawn_point.morphed = 1;
-        }
-    }
-
-    Ok(())
-}
-
-fn is_water<'r>(obj: &structs::SclyObject<'r>) -> bool {
-    let water = obj.property_data.as_water();
-    water.is_some()
-}
-
-fn is_underwater_sound<'r>(obj: &structs::SclyObject<'r>) -> bool {
-    let sound = obj.property_data.as_sound();
-    if sound.is_none() {
-        false // non-sounds are never underwater sounds
-    } else {
-        sound.unwrap().name.to_str().ok().unwrap().to_string().to_lowercase().contains("underwater") // we define underwater sounds by their name
-    }
-}
-
-/* Removes all water objects from the provided room */
-fn patch_remove_water<'r>(
-    _ps: &mut PatcherState,
-    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
-)
--> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer_count = scly.layers.len();
-    for i in 0..layer_count {
-        let layer = &mut scly.layers.as_mut_vec()[i];
-        layer.objects.as_mut_vec().retain(|obj| !is_water(obj));
-        layer.objects.as_mut_vec().retain(|obj| !is_underwater_sound(obj));
-    }
-
-    Ok(())
-}
-
-fn patch_add_liquid<'r>(
-    _ps: &mut PatcherState,
-    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
-    liquid_volume: &LiquidVolume,
-    water_type: WaterType,
-    resources: &HashMap<(u32, FourCC), structs::Resource<'r>>,
-)
--> Result<(), String>
-{
-    // add dependencies to area //
-    let deps = water_type.dependencies();
-    let deps_iter = deps.iter()
-        .map(|&(file_id, fourcc)| structs::Dependency {
-                asset_id: file_id,
-                asset_type: fourcc,
-        });
-
-    area.add_dependencies(resources, 0, deps_iter);
-    
-    let mut water_obj = water_type.to_obj();
-    let water = water_obj.property_data.as_water_mut().unwrap();
-    water.position[0] = liquid_volume.position.x;
-    water.position[1] = liquid_volume.position.y;
-    water.position[2] = liquid_volume.position.z;
-    water.scale[0]    = liquid_volume.size.x;
-    water.scale[1]    = liquid_volume.size.y;
-    water.scale[2]    = liquid_volume.size.z;
-
-    // add water to area //
-    let scly = area.mrea().scly_section_mut();
-    let layer = &mut scly.layers.as_mut_vec()[0];
-    layer.objects.as_mut_vec().push(water_obj);
-
-    Ok(())
-}
-
-fn patch_full_underwater<'r>(
-    _ps: &mut PatcherState,
-    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
-    resources: &HashMap<(u32, FourCC), structs::Resource<'r>>,
-)
--> Result<(), String>
-{
-    let water_type = WaterType::Normal;
-
-    // add dependencies to area //
-    let deps = water_type.dependencies();
-    let deps_iter = deps.iter()
-        .map(|&(file_id, fourcc)| structs::Dependency {
-                asset_id: file_id,
-                asset_type: fourcc,
-        });
-
-    area.add_dependencies(resources, 0, deps_iter);
-    
-    let mut water_obj = water_type.to_obj();
-    let water = water_obj.property_data.as_water_mut().unwrap();
-    
-
-    let room_origin = {
-        let area_transform = area.mlvl_area.area_transform;
-
-        Xyz {
-            x: area_transform[3],
-            y: area_transform[7],
-            z: area_transform[11],
-        }
-    };
-
-    let bounding_box_untransformed = area.mlvl_area.area_bounding_box;
-
-    // transform bounding box by origin offset provided in area transform   //
-    // note that we are assuming the area transformation matrix is identity //
-    // on the premise that every door in the game is axis-aligned           //
-    let bounding_box_min = Xyz {
-        x: room_origin.x + bounding_box_untransformed[0],
-        y: room_origin.y + bounding_box_untransformed[1],
-        z: room_origin.z + bounding_box_untransformed[2],
-    };
-
-    let bounding_box_max = Xyz {
-        x: room_origin.x + bounding_box_untransformed[3],
-        y: room_origin.y + bounding_box_untransformed[4],
-        z: room_origin.z + bounding_box_untransformed[5],
-    };
-    
-    // The water's size is the difference in min/max //
-    water.scale[0] = (bounding_box_max.x - bounding_box_min.x).abs();
-    water.scale[1] = (bounding_box_max.y - bounding_box_min.y).abs();
-    water.scale[2] = (bounding_box_max.z - bounding_box_min.z).abs();
-
-    // The water is centered in the middle of the bounding box //
-    water.position[0] = bounding_box_min.x + (water.scale[0] / 2.0);
-    water.position[1] = bounding_box_min.y + (water.scale[1] / 2.0);
-    water.position[2] = bounding_box_min.z + (water.scale[2] / 2.0);
-
-    /*
-    println!("\nRoom ID = 0x{:X}",area.mrea_file_id());
-    println!("tranform matrix - {:?}", area.mlvl_area.area_transform);
-    println!("bounding box (untransformed) - {:?}", bounding_box_untransformed);
-    println!("bounding box (min) - {:?}", bounding_box_min);
-    println!("bounding box (max) - {:?}", bounding_box_max);
-    println!("water position - {:?}", water.position);
-    println!("water scale - {:?}", water.scale);
-    */
-
-    // add water to area //
-    let scly = area.mrea().scly_section_mut();
-    let layer = &mut scly.layers.as_mut_vec()[0];
-    layer.objects.as_mut_vec().push(water_obj);
-
-    Ok(())
-}
-
-fn patch_transform_bounding_box<'r>(
-    _ps: &mut PatcherState,
-    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
-    offset: Xyz,
-    scale: Xyz,
-)
--> Result<(), String>
-{
-    let bb = area.mlvl_area.area_bounding_box;
-    let size = Xyz {
-        x: (bb[3] - bb[0]).abs(),
-        y: (bb[4] - bb[1]).abs(),
-        z: (bb[5] - bb[2]).abs(),
-    };
-
-    area.mlvl_area.area_bounding_box[0] = bb[0] + offset.x + (size.x*0.5 - (size.x*0.5)*scale.x);
-    area.mlvl_area.area_bounding_box[1] = bb[1] + offset.y + (size.y*0.5 - (size.y*0.5)*scale.y);
-    area.mlvl_area.area_bounding_box[2] = bb[2] + offset.z + (size.z*0.5 - (size.z*0.5)*scale.z);
-    area.mlvl_area.area_bounding_box[3] = bb[3] + offset.x - (size.x*0.5 - (size.x*0.5)*scale.x);
-    area.mlvl_area.area_bounding_box[4] = bb[4] + offset.y - (size.y*0.5 - (size.y*0.5)*scale.y);
-    area.mlvl_area.area_bounding_box[5] = bb[5] + offset.z - (size.z*0.5 - (size.z*0.5)*scale.z);
-
-    Ok(())
-}
-
-fn is_area_damage_special_function<'r>(obj: &structs::SclyObject<'r>)
--> bool
-{
-    let special_function = obj.property_data.as_special_function();
-    
-    if special_function.is_none() {
-        false
-    }
-    else {
-        special_function.unwrap().type_ == 18 // is area damage type
-    }
-}
-
-fn patch_deheat_room<'r>(
-    _ps: &mut PatcherState,
-    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
-)
--> Result<(), String>
-{
-    let scly = area.mrea().scly_section_mut();
-    let layer_count = scly.layers.len();
-    for i in 0..layer_count {
-        let layer = &mut scly.layers.as_mut_vec()[i];
-        layer.objects.as_mut_vec().retain(|obj| !is_area_damage_special_function(obj));
-    }
-    
-    Ok(())
-}
-
-fn patch_superheated_room<'r>(
-    _ps: &mut PatcherState,
-    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
-)
--> Result<(), String>
-{
-    let area_damage_special_function = structs::SclyObject
-    {
-        instance_id: 1310983,
-        connections: vec![
-            structs::Connection
-            {
-                state: structs::ConnectionState::ENTERED,
-                message: structs::ConnectionMsg::INCREMENT,
-                target_object_id: 1310984
-            },
-            structs::Connection
-            {
-                state: structs::ConnectionState::EXITED,
-                message: structs::ConnectionMsg::DECREMENT,
-                target_object_id: 1310984
-            },
-            structs::Connection
-            {
-                state: structs::ConnectionState::ENTERED,
-                message: structs::ConnectionMsg::ACTIVATE,
-                target_object_id: 1310985
-            },
-            structs::Connection
-            {
-                state: structs::ConnectionState::EXITED,
-                message: structs::ConnectionMsg::DEACTIVATE,
-                target_object_id: 1310985
-            },
-            structs::Connection
-            {
-                state: structs::ConnectionState::ENTERED,
-                message: structs::ConnectionMsg::ACTIVATE,
-                target_object_id: 1310986
-            },
-            structs::Connection
-            {
-                state: structs::ConnectionState::EXITED,
-                message: structs::ConnectionMsg::DEACTIVATE,
-                target_object_id: 1310986
-            },
-            structs::Connection
-            {
-                state: structs::ConnectionState::ENTERED,
-                message: structs::ConnectionMsg::PLAY,
-                target_object_id: 1310987
-            },
-            structs::Connection
-            {
-                state: structs::ConnectionState::EXITED,
-                message: structs::ConnectionMsg::STOP,
-                target_object_id: 1310987
-            },
-            structs::Connection
-            {
-                state: structs::ConnectionState::ENTERED,
-                message: structs::ConnectionMsg::SET_TO_ZERO,
-                target_object_id: 1310988
-            }
-        ].into(),
-        property_data: structs::SclyProperty::SpecialFunction(
-            structs::SpecialFunction
-            {
-                name: b"SpecialFunction Area Damage-component\0".as_cstr(),
-                position: [0., 0., 0.].into(),
-                rotation: [0., 0., 0.].into(),
-                type_: 18,
-                unknown0: b"\0".as_cstr(),
-                unknown1: 10.0,
-                unknown2: 0.0,
-                unknown3: 0.0,
-                layer_change_room_id: 4294967295,
-                layer_change_layer_id: 4294967295,
-                item_id: 0,
-                unknown4: 1,
-                unknown5: 0.0,
-                unknown6: 4294967295,
-                unknown7: 4294967295,
-                unknown8: 4294967295
-            }
-        ),
-    };
-
-    let scly = area.mrea().scly_section_mut();
-    let layer = &mut scly.layers.as_mut_vec()[0];
-    layer.objects.as_mut_vec().push(area_damage_special_function);
-=======
 fn patch_ruined_courtyard_thermal_conduits(
     _ps: &mut PatcherState,
     area: &mut mlvl_wrapper::MlvlArea,
@@ -4075,7 +2418,6 @@ fn patch_ruined_courtyard_thermal_conduits(
         *flags |= 1 << 6; // Turn on "Thermal Target"
     }
 
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     Ok(())
 }
 
@@ -4947,40 +3289,9 @@ pub struct ParsedConfig
 {
     pub input_iso: memmap::Mmap,
     pub output_iso: File,
-<<<<<<< HEAD
-    pub layout_string: String,
-    pub is_item_randomized: Option<bool>,
-
-    pub pickup_layout: Vec<u8>,
-    pub elevator_layout: Vec<u8>,
-    pub elevator_layout_override: Vec<String>,
-    pub missile_lock_override: Vec<bool>,
-    pub superheated_rooms: Vec<String>,
-    pub deheated_rooms: Vec<String>,
-    pub drain_liquid_rooms: Vec<String>,
-    pub underwater_rooms: Vec<String>,
-    pub liquid_volumes: Vec<LiquidVolume>,
-    pub aether_transforms: Vec<AetherTransform>,
-    pub additional_items: Vec<AdditionalItem>,
-    pub new_save_spawn_room: String,
-    pub frigate_done_spawn_room: String,
-    pub item_seed: u64,
-    pub seed: u64,
-    pub door_weights: Weights,
-    pub excluded_doors: [HashMap<String,Vec<String>>;7],
-    pub patch_map: bool,
-    pub patch_power_conduits: bool,
-    pub remove_missile_locks: bool,
-    pub remove_frigidite_lock: bool,
-    pub remove_mine_security_station_locks: bool,
-    pub lower_mines_backwards: bool,
-    pub biohazard_containment_alt_spawn: bool,
-    pub remove_hall_of_the_elders_forcefield: bool,
-=======
     // pub layout_string: String,
 
     pub layout: crate::Layout,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     pub iso_format: IsoFormat,
     pub skip_frigate: bool,
@@ -5004,16 +3315,10 @@ pub struct ParsedConfig
 
     pub flaahgra_music_files: Option<[nod_wrapper::FileWrapper; 2]>,
 
-<<<<<<< HEAD
-    pub new_save_starting_items: u64,
-    pub frigate_done_starting_items: u64,
-
-=======
     pub suit_hue_rotate_angle: Option<i32>,
 
     pub starting_items: StartingItems,
     pub random_starting_items: StartingItems,
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
     pub comment: String,
     pub main_menu_message: String,
 
@@ -5070,21 +3375,10 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
     writeln!(ct, "keep fmvs: {}", config.keep_fmvs).unwrap();
     writeln!(ct, "nonmodal hudmemos: {}", config.skip_hudmenus).unwrap();
     writeln!(ct, "obfuscated items: {}", config.obfuscate_items).unwrap();
-<<<<<<< HEAD
-
-    let mut dt = Vec::new();
-    writeln!(dt, "{}",config.comment).unwrap();
-    writeln!(dt).unwrap();
-    writeln!(dt, "Configuration:").unwrap();
-    writeln!(dt, "seed: {}",config.seed).unwrap();
-    writeln!(dt, "door weights: {:?}",config.door_weights).unwrap();
-    writeln!(dt, "excluded_doors: {:?}",config.excluded_doors).unwrap();
-=======
     writeln!(ct, "nonvaria heat damage: {}", config.nonvaria_heat_damage).unwrap();
     writeln!(ct, "heat damage per sec: {}", config.heat_damage_per_sec).unwrap();
     writeln!(ct, "staggered suit damage: {}", config.staggered_suit_damage).unwrap();
     writeln!(ct, "{}", config.comment).unwrap();
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     let mut reader = Reader::new(&config.input_iso[..]);
 
@@ -5123,15 +3417,6 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
     gc_disc.add_file("mpdr.txt",structs::FstEntryFile::Unknown(Reader::new(&dt)))?;
 
 
-<<<<<<< HEAD
-    if !config.is_item_randomized.unwrap_or(false) && version != Version::Ntsc0_01 && version != Version::Pal {
-        let patches_rel_bytes = match version {
-            Version::Ntsc0_00 => generated::PATCHES_100_REL,
-            Version::Ntsc0_01 => unreachable!(),
-            Version::Ntsc0_02 => generated::PATCHES_102_REL,
-            Version::Pal      => generated::PATCHES_PAL_REL,
-        };
-=======
     let patches_rel_bytes = match version {
         Version::NtscU0_00    => Some(rel_files::PATCHES_100_REL),
         Version::NtscU0_01    => None,
@@ -5143,7 +3428,6 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
         Version::PalTrilogy => None,
     };
     if let Some(patches_rel_bytes) = patches_rel_bytes {
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         gc_disc.add_file(
             "patches.rel",
             structs::FstEntryFile::Unknown(Reader::new(patches_rel_bytes))
@@ -5244,77 +3528,6 @@ fn room_strg_id_from_mrea_id(mrea_id: u32) -> (u32, u32)
 fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, version: Version)
     -> Result<(), String>
 {
-<<<<<<< HEAD
-    let pickup_layout: Vec<_> = config.pickup_layout.iter()
-        .map(|i| PickupType::from_idx(*i as usize).unwrap())
-        .collect();
-    let pickup_layout = &pickup_layout[..];
-
-    let mut elevator_layout: Vec<_> = config.elevator_layout[..ELEVATORS.len()].iter()
-        .map(|i| ELEVATORS[*i as usize])
-        .map(|elv| if config.skip_impact_crater && elv.name == "Crater Entry Point" {
-                Elevator::end_game_elevator()
-            } else {
-                elv
-            })
-        .collect();
-
-    let mut idx = 0;
-    for elv in &config.elevator_layout_override {
-        if elv.to_lowercase() == "credits" {
-            elevator_layout[idx] = Elevator::end_game_elevator();
-            idx = idx + 1;
-            continue;    
-        }
-
-        let spawn_room = spawn_room_from_string(elv.to_string());
-        
-        assert!(!(spawn_room.mlvl == World::FrigateOrpheon.mlvl() && config.skip_frigate)); // panic if a elevator destination takes you to the removed frigate level
-        elevator_layout[idx].mlvl = spawn_room.mlvl;
-        elevator_layout[idx].mrea = spawn_room.mrea; 
-
-        let (mrea_idx, _) = room_strg_id_from_mrea_id(spawn_room.mrea);
-        elevator_layout[idx].mrea_idx = mrea_idx;
-        idx = idx + 1;
-    }
-
-    // The room the player spawns in after starting a new save
-    let new_save_spawn_room = {
-        if config.new_save_spawn_room.to_string() == "" { // if unspecified
-            if config.skip_frigate {
-                SpawnRoom::from_room_idx(config.elevator_layout[20] as usize) // go to elevator specified in layout string
-            } else {
-                SpawnRoom::frigate_spawn_room() // spawn on frigate
-            }
-        } else {
-            spawn_room_from_string(config.new_save_spawn_room.to_string()) // use the specified room name
-        }
-    };
-    assert!(new_save_spawn_room.mlvl != World::FrigateOrpheon.mlvl() || !config.skip_frigate); // panic if the games starts in the removed frigate level
-    // println!("new_save_spawn_room - 0x{:X}", new_save_spawn_room.mrea);
-
-    // The room the player spawns in after finishing the frigate level
-    let frigate_done_spawn_room = {
-        if config.skip_frigate {
-            spawn_room_from_string("Tallon:Waterfall Cavern".to_string()) // this is to avoid double patching the landing site item
-        } else if config.frigate_done_spawn_room.to_string() == "" { // if unspecified
-            SpawnRoom::from_room_idx(config.elevator_layout[20] as usize) // go to elevator specified in layout string
-        } else {
-            spawn_room_from_string(config.frigate_done_spawn_room.to_string()) // use the specified room name
-        }
-    };
-    assert!(frigate_done_spawn_room.mlvl != World::FrigateOrpheon.mlvl()); // panic if the frigate level gets you stuck in a loop
-    // println!("frigate_done_spawn_room - 0x{:X}", frigate_done_spawn_room.mrea);
-     
-    let mut rng = StdRng::seed_from_u64(config.seed);
-    let artifact_totem_strings = build_artifact_temple_totem_scan_strings(pickup_layout, &mut rng);
-    let mut pickup_resources = collect_pickup_resources(gc_disc);
-    let door_resources = collect_door_resources(gc_disc);
-    let liquid_resources = collect_liquid_resources(gc_disc);
-    if config.skip_hudmenus {
-        add_skip_hudmemos_strgs(&mut pickup_resources);
-    }
-=======
     let pickup_layout = &config.layout.pickups[..];
     let elevator_layout = &config.layout.elevators;
     let spawn_room = config.layout.starting_location;
@@ -5324,7 +3537,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     let pickup_resources = collect_pickup_resources(gc_disc, &config.random_starting_items);
     let starting_items = StartingItems::merge(config.starting_items.clone(), config.random_starting_items.clone());
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     // XXX These values need to out live the patcher
     let select_game_fmv_suffix = ["A", "B", "C"].choose(&mut rng).unwrap();
@@ -5603,63 +3815,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         }
     }
 
-<<<<<<< HEAD
-    // add additional items //
-    for item in config.additional_items.iter()
-    {
-        let room = spawn_room_from_string(item.room.to_string());
-        patcher.add_scly_patch(
-            (room.pak_name.as_bytes(), room.mrea),
-            move |_ps, area| patch_add_item(_ps, area, PickupType::from_string(item.item_type.to_string()), item.position, pickup_resources, config),
-        );
-    }
-
-    if !config.is_item_randomized.unwrap_or(false) {
-        let rel_config;
-        if config.skip_frigate {
-            patcher.add_file_patch(
-                b"default.dol",
-                move |file| patch_dol(
-                    file,
-                    new_save_spawn_room,
-                    version,
-                    config.nonvaria_heat_damage,
-                    config.staggered_suit_damage,
-                )
-            );
-            patcher.add_file_patch(b"Metroid1.pak", empty_frigate_pak);
-            rel_config = create_rel_config_file(new_save_spawn_room, config.quickplay);
-        } else {
-            patcher.add_file_patch(
-                b"default.dol",
-                |file| patch_dol(
-                    file,
-                    new_save_spawn_room,
-                    version,
-                    config.nonvaria_heat_damage,
-                    config.staggered_suit_damage,
-                )
-            );
-            patcher.add_scly_patch(
-                resource_info!("01_intro_hanger.MREA").into(),
-                move |_ps, area| patch_frigate_teleporter(area, frigate_done_spawn_room)
-            );
-            rel_config = create_rel_config_file(new_save_spawn_room, config.quickplay);
-        }
-
-        gc_disc.add_file(
-            "rel_config.bin",
-            structs::FstEntryFile::ExternalFile(Box::new(rel_config)),
-        )?;
-
-        // Patch the landing site to avoid loosing all items with custscene trigger //
-        patcher.add_scly_patch(
-            resource_info!("01_over_mainplaza.MREA").into(),
-            patch_landing_site_cutscene_triggers
-        );
-        
-        // New Save Room Starting Items //
-=======
     let rel_config;
     if config.skip_frigate {
         patcher.add_file_patch(
@@ -5684,43 +3839,10 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             )
         );
 
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         patcher.add_scly_patch(
             (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
             move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false)
         );
-<<<<<<< HEAD
-
-        // Post Frigate Starting Items //
-        if !config.skip_frigate && frigate_done_spawn_room.mrea != new_save_spawn_room.mrea { // but only if it won't override an existing patch
-            patcher.add_scly_patch(
-                (frigate_done_spawn_room.pak_name.as_bytes(), frigate_done_spawn_room.mrea),
-                move |_ps, area| patch_starting_pickups(area, config.frigate_done_starting_items, false)
-            );
-        }
-
-        const ARTIFACT_TOTEM_SCAN_STRGS: &[ResourceInfo] = &[
-            resource_info!("07_Over_Stonehenge Totem 5.STRG"), // Lifegiver
-            resource_info!("07_Over_Stonehenge Totem 4.STRG"), // Wild
-            resource_info!("07_Over_Stonehenge Totem 10.STRG"), // World
-            resource_info!("07_Over_Stonehenge Totem 9.STRG"), // Sun
-            resource_info!("07_Over_Stonehenge Totem 3.STRG"), // Elder
-            resource_info!("07_Over_Stonehenge Totem 11.STRG"), // Spirit
-            resource_info!("07_Over_Stonehenge Totem 1.STRG"), // Truth
-            resource_info!("07_Over_Stonehenge Totem 7.STRG"), // Chozo
-            resource_info!("07_Over_Stonehenge Totem 6.STRG"), // Warrior
-            resource_info!("07_Over_Stonehenge Totem 12.STRG"), // Newborn
-            resource_info!("07_Over_Stonehenge Totem 8.STRG"), // Nature
-            resource_info!("07_Over_Stonehenge Totem 2.STRG"), // Strength
-        ];
-        for (res_info, strg_text) in ARTIFACT_TOTEM_SCAN_STRGS.iter().zip(artifact_totem_strings.iter()) {
-            patcher.add_resource_patch(
-                (*res_info).into(),
-                move |res| patch_artifact_totem_scan_strg(res, &strg_text),
-            );
-        }
-
-=======
         rel_config = create_rel_config_file(
             SpawnRoom::FrigateExteriorDockingHangar,
             config.quickplay
@@ -5746,7 +3868,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         resource_info!("07_Over_Stonehenge Totem 2.STRG"), // Strength
     ];
     for (res_info, strg_text) in ARTIFACT_TOTEM_SCAN_STRGS.iter().zip(artifact_totem_strings.iter()) {
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         patcher.add_resource_patch(
             resource_info!("STRG_Main.STRG").into(),// 0x0552a456
             |res| patch_main_strg(res, &config.main_menu_message)
@@ -5781,11 +3902,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
         patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
 
-<<<<<<< HEAD
-        if config.patch_power_conduits {
-            patch_power_conduits(&mut patcher);
-        }
-=======
     let show_starting_items = !config.random_starting_items.is_empty();
     patcher.add_scly_patch(
         (spawn_room.pak_name.as_bytes(), spawn_room.mrea),
@@ -5798,7 +3914,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     );
 
     patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
         if config.remove_frigidite_lock {
             make_patch_elite_quarters_access(&mut patcher);
@@ -5808,23 +3923,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             make_remove_mine_security_station_locks_patch(&mut patcher);
         }
 
-<<<<<<< HEAD
-        if config.lower_mines_backwards {
-            make_remove_forcefields_patch(&mut patcher);
-        }
-
-        if config.remove_hall_of_the_elders_forcefield {
-            patcher.add_scly_patch(
-                resource_info!("17_chozo_bowling.MREA").into(), // Hall of the elders
-                move |_ps, area| remove_forcefields(_ps, area),
-            );
-        }
-
-        make_elevators_patch(&mut patcher, &elevator_layout, &config.elevator_layout_override, config.auto_enabled_elevators, config.tiny_elvetator_samus);
-
-        make_elite_research_fight_prereq_patches(&mut patcher);
-
-=======
     patch_heat_damage_per_sec(&mut patcher, config.heat_damage_per_sec);
 
     patcher.add_scly_patch(
@@ -5903,7 +4001,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     }
 
     if version == Version::NtscU0_02 {
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         patcher.add_scly_patch(
             resource_info!("22_Flaahgra.MREA").into(),
             patch_sunchamber_prevent_wild_before_flaahgra
@@ -5916,16 +4013,9 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             resource_info!("00j_over_hall.MREA").into(),
             patch_temple_security_station_cutscene_trigger
         );
-<<<<<<< HEAD
-        patcher.add_scly_patch(
-            resource_info!("01_ice_plaza.MREA").into(),
-            patch_ridley_phendrana_shorelines_cinematic
-        );
-=======
     }
 
     if version == Version::Pal || version == Version::NtscJ || version == Version::NtscUTrilogy || version == Version::NtscJTrilogy || version == Version::PalTrilogy {
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         patcher.add_scly_patch(
             resource_info!("08b_under_intro_ventshaft.MREA").into(),
             patch_main_ventilation_shaft_section_b_door
@@ -5937,12 +4027,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             resource_info!("13_ice_vault.MREA").into(),
             patch_research_lab_aether_exploding_wall
         );
-<<<<<<< HEAD
-        patcher.add_scly_patch(
-            resource_info!("11_ice_observatory.MREA").into(),
-            patch_observatory_2nd_pass_solvablility
-        );
-=======
 
         if version == Version::Pal {
             patcher.add_scly_patch(
@@ -5955,20 +4039,16 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     if spawn_room != SpawnRoom::LandingSite {
         // If we have a non-default start point, patch the landing site to avoid
         // weirdness with cutscene triggers and the ship spawning.
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         patcher.add_scly_patch(
             resource_info!("02_mines_shotemup.MREA").into(),
             patch_mines_security_station_soft_lock
         );
-<<<<<<< HEAD
-=======
     }
 
     // If any of the elevators go straight to the ending, patch out the pre-credits cutscene.
     let skip_ending_cinematic = elevator_layout.values()
         .any(|sr| sr == &SpawnRoom::EndingCinematic);
     if skip_ending_cinematic {
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
         patcher.add_scly_patch(
             resource_info!("18_ice_gravity_chamber.MREA").into(),
             patch_gravity_chamber_stalactite_grapple_point

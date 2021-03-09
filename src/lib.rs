@@ -31,11 +31,6 @@ pub mod dol_patcher;
 pub mod elevators;
 pub mod gcz_writer;
 pub mod mlvl_wrapper;
-<<<<<<< HEAD
-pub mod pickup_meta;
-pub mod door_meta;
-=======
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 pub mod patcher;
 pub mod patches;
 pub mod pickup_meta;
@@ -367,92 +362,3 @@ impl<'a> ResourceData<'a>
         }
     }
 }
-<<<<<<< HEAD
-
-macro_rules! def_asset_ids {
-    (@Build { $prev:expr } $id:ident, $($rest:tt)*) => {
-        def_asset_ids!(@Build { $prev } $id = $prev + 1, $($rest)*);
-    };
-    (@Build { $_prev:expr } $id:ident = $e:expr, $($rest:tt)*) => {
-        pub const $id: u32 = $e;
-        def_asset_ids!(@Build { $id } $($rest)*);
-    };
-    (@Build { $prev:expr }) => {
-    };
-    ($($tokens:tt)*) => {
-        def_asset_ids!(@Build { 0 } $($tokens)*);
-    };
-}
-
-pub mod custom_asset_ids {
-    def_asset_ids! {
-        PHAZON_SUIT_SCAN = 0xDEAF0000,
-        PHAZON_SUIT_STRG,
-        PHAZON_SUIT_TXTR1,
-        PHAZON_SUIT_TXTR2,
-        PHAZON_SUIT_CMDL,
-        PHAZON_SUIT_ANCS,
-        NOTHING_ACQUIRED_HUDMEMO_STRG,
-        NOTHING_SCAN_STRG, // 0xDEAF0007
-        NOTHING_SCAN,
-        NOTHING_TXTR,
-        NOTHING_CMDL,
-        NOTHING_ANCS,
-        THERMAL_VISOR_SCAN,
-        THERMAL_VISOR_STRG,
-        SCAN_VISOR_ACQUIRED_HUDMEMO_STRG,
-        SCAN_VISOR_SCAN_STRG,
-        SCAN_VISOR_SCAN,
-        SHINY_MISSILE_TXTR0,
-        SHINY_MISSILE_TXTR1,
-        SHINY_MISSILE_TXTR2,
-        SHINY_MISSILE_CMDL,
-        SHINY_MISSILE_ANCS,
-        SHINY_MISSILE_EVNT,
-        SHINY_MISSILE_ANIM,
-        SHINY_MISSILE_ACQUIRED_HUDMEMO_STRG,
-        SHINY_MISSILE_SCAN_STRG,
-        SHINY_MISSILE_SCAN,
-
-        // Door Variants //
-        MORPH_BALL_BOMB_DOOR_CMDL,
-        MORPH_BALL_BOMB_DOOR_TXTR,
-        POWER_BOMB_DOOR_CMDL,
-        POWER_BOMB_DOOR_TXTR,
-        MISSILE_DOOR_CMDL,
-        MISSILE_DOOR_TXTR,
-        CHARGE_DOOR_CMDL,
-        CHARGE_DOOR_TXTR,
-        SUPER_MISSILE_DOOR_CMDL,
-        SUPER_MISSILE_DOOR_TXTR,
-        WAVEBUSTER_DOOR_CMDL,
-        WAVEBUSTER_DOOR_TXTR,
-        ICESPREADER_DOOR_CMDL,
-        ICESPREADER_DOOR_TXTR,
-        FLAMETHROWER_DOOR_CMDL,
-        FLAMETHROWER_DOOR_TXTR,
-        DISABLED_DOOR_CMDL,
-        DISABLED_DOOR_TXTR,
-        AI_DOOR_CMDL,
-        AI_DOOR_TXTR,
-        
-        // Vertical Door Variants //
-        VERTICAL_RED_DOOR_CMDL,
-        VERTICAL_POWER_BOMB_DOOR_CMDL,
-        VERTICAL_MORPH_BALL_BOMB_DOOR_CMDL,
-        VERTICAL_MISSILE_DOOR_CMDL,
-        VERTICAL_CHARGE_DOOR_CMDL,
-        VERTICAL_SUPER_MISSILE_DOOR_CMDL,
-        VERTICAL_DISABLED_DOOR_CMDL,
-        VERTICAL_WAVEBUSTER_DOOR_CMDL,
-        VERTICAL_ICESPREADER_DOOR_CMDL,
-        VERTICAL_FLAMETHROWER_DOOR_CMDL,
-        VERTICAL_AI_DOOR_CMDL,
-        
-        // has to be at the end //
-        SKIP_HUDMEMO_STRG_START,
-        SKIP_HUDMEMO_STRG_END = SKIP_HUDMEMO_STRG_START + 38,
-    }
-}
-=======
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75

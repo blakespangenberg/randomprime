@@ -28,29 +28,6 @@ mod txtr;
 mod scly_props
 {
     // http://www.metroid2002.com/retromodding/wiki/User:Parax0/Sandbox
-<<<<<<< HEAD
-    mod actor;
-    mod damageable_trigger;
-    mod dock;
-    mod door;
-    mod effect;
-    mod hud_memo;
-    mod memory_relay;
-    mod pickup;
-    mod platorm;
-    mod point_of_interest;
-    mod player_actor;
-    mod player_hint;
-    mod relay;
-    mod sound;
-    mod spawn_point;
-    mod special_function;
-    mod streamed_audio;
-    mod timer;
-    mod trigger;
-    mod water;
-    mod world_transporter;
-=======
     pub mod actor;
     pub mod damageable_trigger;
     pub mod dock;
@@ -71,7 +48,6 @@ mod scly_props
     pub mod timer;
     pub mod trigger;
     pub mod world_transporter;
->>>>>>> 09e12af77bda2689d91b362c14480f539937ba75
 
     pub mod structs;
 

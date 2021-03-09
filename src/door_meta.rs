@@ -1,11 +1,10 @@
-use crate::{pickup_meta::ScriptObjectLocation, custom_asset_ids};
-use structs::structs::{
-    DamageVulnerability,
-    ChargedBeams,
-    BeamCombos
-};
-use reader_writer::{FourCC};
+use crate::{pickup_meta::ScriptObjectLocation, custom_assets::custom_asset_ids};
+
+use std::mem;
 use serde::{Serialize, Deserialize};
+use reader_writer::{FourCC};
+
+// structs::scly_structs::DamageableTrigger
 
 #[derive(Clone, Copy, Debug)]
 pub struct DoorLocation {

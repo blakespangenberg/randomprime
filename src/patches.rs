@@ -23,7 +23,7 @@ use crate::{
     memmap,
     mlvl_wrapper,
     pickup_meta::{self, PickupType},
-    door_meta::{DoorType, BlastShieldType, DoorLocation, Weights, World},
+    door_meta::{DoorType, BlastShieldType, DoorLocation, World},
     patcher::{PatcherState, PrimePatcher},
     starting_items::StartingItems,
     txtr_conversions::{
@@ -434,7 +434,7 @@ fn patch_add_item<'r>(
     let mut pickup = structs::SclyObject {
         instance_id: ps.fresh_instance_id_range.next().unwrap(),
         connections: vec![].into(),
-        property_data: structs::SclyProperty::Pickup(
+        property_data: structs::SclyProperty::Pickup(Box::new(
             structs::Pickup {
                 position: [
                     pickup_position.x,
@@ -454,14 +454,14 @@ fn patch_add_item<'r>(
         
                 ..(pickup_type.pickup_data().into_owned())
             }
-        )
+        ))
     };
 
     // create hudmemo
     let hudmemo = structs::SclyObject {
         instance_id: ps.fresh_instance_id_range.next().unwrap(),
         connections: vec![].into(),
-        property_data: structs::SclyProperty::HudMemo(
+        property_data: structs::SclyProperty::HudMemo(Box::new(
             structs::HudMemo {
                 name: b"myhudmemo\0".as_cstr(),
                 first_message_timer: 5.,
@@ -470,7 +470,7 @@ fn patch_add_item<'r>(
                 strg: pickup_type.skip_hudmemos_strg(),
                 active: 1,
             }
-        )
+        ))
     };
 
     // Display hudmemo when item is picked up
@@ -488,7 +488,7 @@ fn patch_add_item<'r>(
     let special_function = structs::SclyObject {
         instance_id: ps.fresh_instance_id_range.next().unwrap(),
         connections: vec![].into(),
-        property_data: structs::SclyProperty::SpecialFunction(
+        property_data: structs::SclyProperty::SpecialFunction(Box::new(
             structs::SpecialFunction {
                 name: b"myspecialfun\0".as_cstr(),
                 position: [0., 0., 0.].into(),
@@ -507,7 +507,7 @@ fn patch_add_item<'r>(
                 unknown7: 0xFFFFFFFF,
                 unknown8: 0xFFFFFFFF,
             }
-        ),
+        )),
     };
 
     // Activate the layer change when item is picked up
@@ -523,7 +523,7 @@ fn patch_add_item<'r>(
     let attainment_audio = structs::SclyObject {
         instance_id: ps.fresh_instance_id_range.next().unwrap(),
         connections: vec![].into(),
-        property_data: structs::SclyProperty::Sound(
+        property_data: structs::SclyProperty::Sound(Box::new(
             structs::Sound { // copied from main plaza half-pipe
                 name: b"mysound\0".as_cstr(),
                 position: [
@@ -550,7 +550,7 @@ fn patch_add_item<'r>(
                 allow_duplicates: 0,
                 pitch: 0,
             }
-        )
+        ))
     };
 
     // Play the sound when item is picked up
@@ -977,59 +977,6 @@ fn patch_frigate_teleporter<'r>(area: &mut mlvl_wrapper::MlvlArea, spawn_room: S
     Ok(())
 }
 
-fn calculate_door_type(pak_name: &str, mut rng: &mut StdRng, weights: &Weights) -> DoorType {
-    let range = Uniform::from(0..100);
-    let weights : &[u8;4] = match pak_name {
-        "Metroid2.pak" => &weights.chozo_ruins,
-        "Metroid3.pak" => &weights.phendrana_drifts,
-        "Metroid4.pak" => &weights.tallon_overworld,
-        "metroid5.pak" => &weights.phazon_mines,
-        "Metroid6.pak" => &weights.magmoor_caverns,
-        "Metroid7.pak" => &[0,0,0,100],
-        _ => &[100,0,0,0]
-    };
-    if weights[0]+weights[1]+weights[2]+weights[3] != 100 { panic!("The sum of all weights for each area must equal exactly 100.") }
-    let num:u8 = range.sample(&mut rng);
-    if num < weights[0] { DoorType::Blue }
-    else if num < (weights[1]+weights[0]) { DoorType::Purple }
-    else if num < (weights[2]+weights[1]+weights[0]) { DoorType::White }
-    else if num < (weights[3]+weights[2]+weights[1]+weights[0]) { DoorType::Red }
-    else {
-        panic!("RNG outside the range 0-99.")
-    }
-}
-
-/*
-{
-
-    // update MREA layer with new Objects
-    let scly = area.mrea().scly_section_mut();
-    let layers = scly.layers.as_mut_vec();
-
-    // If this is an artifact, create and push change function
-    let pickup_kind = pickup_type.pickup_data().kind;
-    if pickup_kind >= 29 && pickup_kind <= 40 {
-        let instance_id = ps.fresh_instance_id_range.next().unwrap();
-        let function = artifact_layer_change_template(instance_id, pickup_kind);
-        layers[new_layer_idx].objects.as_mut_vec().push(function);
-        pickup.connections.as_mut_vec().push(
-            structs::Connection {
-                state: structs::ConnectionState::ARRIVED,
-                message: structs::ConnectionMsg::INCREMENT,
-                target_object_id: instance_id,
-            }
-        );
-    }
-
-    layers[0].objects.as_mut_vec().push(special_function);
-    layers[new_layer_idx].objects.as_mut_vec().push(hudmemo);
-    layers[new_layer_idx].objects.as_mut_vec().push(attainment_audio);
-    layers[new_layer_idx].objects.as_mut_vec().push(pickup);
-
-    Ok(())
-}
-*/
-
 fn patch_door<'r>(
     ps: &mut PatcherState,
     area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
@@ -1142,7 +1089,7 @@ fn patch_door<'r>(
                         target_object_id: blast_shield_instance_id,
                     },
                 ].into(),
-                property_data: structs::SclyProperty::Actor(
+                property_data: structs::SclyProperty::Actor(Box::new(
                     structs::Actor {
                         name: b"Custom Blast Shield\0".as_cstr(),
                         position,
@@ -1152,19 +1099,19 @@ fn patch_door<'r>(
                         scan_offset,
                         unknown1: 1.0, // mass  
                         unknown2: 0.0, // momentum
-                        health_info: structs::structs::HealthInfo {
+                        health_info: structs::scly_structs::HealthInfo {
                             health: 1.0,
                             knockback_resistance: 1.0,
                         },
                         damage_vulnerability: blast_shield_type.vulnerability(),
                         cmdl: blast_shield_type.cmdl(),
-                        ancs: structs::structs::AncsProp {
-                            file_id: 0xFFFFFFFF,
+                        ancs: structs::scly_structs::AncsProp {
+                            file_id: ResId::invalid(),
                             node_index: 0,
-                            unknown: 0xFFFFFFFF,
+                            unknown: ResId::invalid(),
                         },
-                        actor_params: structs::structs::ActorParameters {
-                            light_params: structs::structs::LightParameters {
+                        actor_params: structs::scly_structs::ActorParameters {
+                            light_params: structs::scly_structs::LightParameters {
                                 unknown0: 1,
                                 unknown1: 1.0,
                                 shadow_tessellation: 0,
@@ -1180,17 +1127,17 @@ fn patch_door<'r>(
                                 unknown8: 0,
                                 light_layer_id: 0,
                             },
-                            scan_params: structs::structs::ScannableParameters {
-                                scan: 0xFFFFFFFF,
+                            scan_params: structs::scly_structs::ScannableParameters {
+                                scan: ResId::invalid(),
                             },
-                            xray_cmdl: 0xFFFFFFFF,
-                            xray_cskr: 0xFFFFFFFF,
-                            thermal_cmdl: 0xFFFFFFFF,
-                            thermal_cskr: 0xFFFFFFFF,
+                            xray_cmdl: ResId::invalid(),
+                            xray_cskr: ResId::invalid(),
+                            thermal_cmdl: ResId::invalid(),
+                            thermal_cskr: ResId::invalid(),
                             unknown0: 1,
                             unknown1: 1.0,
                             unknown2: 1.0,
-                            visor_params: structs::structs::VisorParameters {
+                            visor_params: structs::scly_structs::VisorParameters {
                                 unknown0: 0,
                                 target_passthrough: 0,
                                 unknown2: 15, // Visor Flags : Combat|Scan|Thermal|XRay
@@ -1212,7 +1159,7 @@ fn patch_door<'r>(
                         unknown12: 0,
                         unknown13: 0,
                     }
-                ),
+                )),
             };
 
             // Create Special Function to disable layer once shield is destroyed
@@ -1221,7 +1168,7 @@ fn patch_door<'r>(
             let special_function = structs::SclyObject {
                 instance_id: ps.fresh_instance_id_range.next().unwrap(),
                 connections: vec![].into(),
-                property_data: structs::SclyProperty::SpecialFunction(
+                property_data: structs::SclyProperty::SpecialFunction(Box::new(
                     structs::SpecialFunction {
                         name: b"myspecialfun\0".as_cstr(),
                         position: [0., 0., 0.].into(),
@@ -1240,7 +1187,7 @@ fn patch_door<'r>(
                         unknown7: 0xFFFFFFFF,
                         unknown8: 0xFFFFFFFF,
                     }
-                ),
+                )),
             };
 
             // Activate the layer change when blast shield is destroyed
@@ -1262,7 +1209,7 @@ fn patch_door<'r>(
             let sound = structs::SclyObject {
                 instance_id: ps.fresh_instance_id_range.next().unwrap(),
                 connections: vec![].into(),
-                property_data: structs::SclyProperty::Sound(
+                property_data: structs::SclyProperty::Sound(Box::new(
                     structs::Sound { // copied from main plaza half-pipe
                         name: b"mysound\0".as_cstr(),
                         position: [
@@ -1289,7 +1236,7 @@ fn patch_door<'r>(
                         allow_duplicates: 0,
                         pitch: 0,
                     }
-                )
+                ))
             };
 
             // Blast shield triggers explosion sfx when dead //
@@ -1305,7 +1252,7 @@ fn patch_door<'r>(
             let streamed_audio = structs::SclyObject {
                 instance_id: ps.fresh_instance_id_range.next().unwrap(),
                 connections: vec![].into(),
-                property_data: structs::SclyProperty::StreamedAudio(
+                property_data: structs::SclyProperty::StreamedAudio(Box::new(
                     structs::StreamedAudio {
                         name: b"mystreamedaudio\0".as_cstr(),
                         active: 1,
@@ -1317,7 +1264,7 @@ fn patch_door<'r>(
                         oneshot: 1,
                         is_music: 1,
                     }
-                ),
+                )),
             };
 
             // Blast shield triggers jingle when dead //
@@ -2076,7 +2023,7 @@ fn make_main_plaza_locked_door_two_ways<'r>(
                 position: [151.951187, 86.412575, 24.403177].into(),
                 rotation: [0.0, 0.0, 0.0].into(),
                 scale: [1.0, 1.0, 1.0].into(),
-                unknown0: [0.0, 0.0, 0.0].into(),
+                hitbox: [0.0, 0.0, 0.0].into(),
                 scan_offset: [0.0, 0.0, 0.0].into(),
                 unknown1: 1.0,
                 unknown2: 0.0,
@@ -3398,15 +3345,7 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
                 "or NTSC-US, NTSC-J, PAL Metroid Prime Trilogy."
             ))?
     };
-    config.is_item_randomized = Some(gc_disc.find_file("randomprime.txt").is_some());
-    if config.is_item_randomized.unwrap_or(false) {
-        pn.notify_stacking_warning();
-    }
-    if gc_disc.find_file("mpdr.txt").is_some() {
-        Err(concat!("The input ISO has already been randomized using MPDR. ",
-                    "You must start from an unmodified ISO or an item randomized one every time."
-        ))?
-    }
+
     if version == Version::NtscU0_01 {
         Err("The NTSC 0-01 version of Metroid Prime is not current supported.")?;
     }
@@ -3414,8 +3353,6 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
     build_and_run_patches(&mut gc_disc, &config, version)?;
 
     gc_disc.add_file("randomprime.txt", structs::FstEntryFile::Unknown(Reader::new(&ct)))?;
-    gc_disc.add_file("mpdr.txt",structs::FstEntryFile::Unknown(Reader::new(&dt)))?;
-
 
     let patches_rel_bytes = match version {
         Version::NtscU0_00    => Some(rel_files::PATCHES_100_REL),
@@ -3531,8 +3468,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let pickup_layout = &config.layout.pickups[..];
     let elevator_layout = &config.layout.elevators;
     let spawn_room = config.layout.starting_location;
-
-    let mut rng = StdRng::seed_from_u64(config.layout.seed);
     let artifact_totem_strings = build_artifact_temple_totem_scan_strings(pickup_layout, &mut rng);
 
     let pickup_resources = collect_pickup_resources(gc_disc, &config.random_starting_items);
@@ -3550,7 +3485,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let door_resources = &door_resources;
     let liquid_resources = &liquid_resources;
     let mut patcher = PrimePatcher::new();
-    if !config.is_item_randomized.unwrap_or(false) && !config.keep_fmvs {
+    if !config.keep_fmvs {
         patcher.add_file_patch(b"opening.bnr", |file| patch_bnr(file, config));
         // Replace the attract mode FMVs with empty files to reduce the amount of data we need to
         // copy and to make compressed ISOs smaller.
@@ -3577,7 +3512,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     }
 
     // patch videos
-    if !config.is_item_randomized.unwrap_or(false) {
+    {
         if let Some(flaahgra_music_files) = &config.flaahgra_music_files {
             const MUSIC_FILE_NAME: &[&[u8]] = &[
                 b"Audio/rui_flaaghraR.dsp",
@@ -3712,7 +3647,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     
     // Patch pickups and doors
     let mut layout_iterator = pickup_layout.iter();
-    let mut door_rng = StdRng::seed_from_u64(config.seed);
     for (name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each .pak
         let world = World::from_pak(name).unwrap();
         let level = world as usize;
@@ -3721,7 +3655,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
         for room_info in rooms.iter() { // for each room in the pak
             // patch the item locations
-            if !config.is_item_randomized.unwrap_or(false) {
+            {
                  patcher.add_scly_patch((name.as_bytes(), room_info.room_id), move |_, area| {
                     // Remove objects
                     let layers = area.mrea().scly_section_mut().layers.as_mut_vec();
@@ -3782,9 +3716,9 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
                                         (room_info.room_id == 0xC50AF17A && door_index == 2) || // Elite Control
                                         (room_info.room_id == 0x90709AAC && door_index == 1);   // Ventilation Shaft
 
-                let mut door_type = calculate_door_type(name,&mut door_rng,&config.door_weights); // randomly pick a door color using weights
+                let mut door_type;
                 
-                if door_specification != "random" && door_specification != "default" {
+                if door_specification != "default" {
                     door_type = DoorType::from_string(door_specification.to_string()).unwrap();
                 }
                 
@@ -3804,7 +3738,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
                         move |_ps, area| patch_door(_ps, area,door_location,door_type, BlastShieldType::Missile, door_resources,config.powerbomb_lockpick)
                     );
                     
-                    if config.patch_map && room_info.mapa_id != 0 {
+                    if room_info.mapa_id != 0 {
                         patcher.add_resource_patch(
                             (&[name.as_bytes()], room_info.mapa_id,b"MAPA".into()),
                             move |res| patch_map_door_icon(res,door_location,door_type)
@@ -3829,49 +3763,36 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         patcher.add_file_patch(b"Metroid1.pak", empty_frigate_pak);
         rel_config = create_rel_config_file(spawn_room, config.quickplay);
     } else {
-        patcher.add_file_patch(
-            b"default.dol",
-            |file| patch_dol(
-                file,
+            patcher.add_file_patch(
+                b"default.dol",
+                |file| patch_dol(
+                    file,
+                    SpawnRoom::FrigateExteriorDockingHangar,
+                    version,
+                    config,
+                )
+            );
+
+            patcher.add_scly_patch(
+                (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
+                move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false, pickup_resources)
+            );
+            rel_config = create_rel_config_file(
                 SpawnRoom::FrigateExteriorDockingHangar,
-                version,
-                config,
-            )
-        );
+                config.quickplay
+            );
+        }
 
-        patcher.add_scly_patch(
-            (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
-            move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false)
-        );
-        rel_config = create_rel_config_file(
-            SpawnRoom::FrigateExteriorDockingHangar,
-            config.quickplay
-        );
-    }
-    gc_disc.add_file(
-        "rel_config.bin",
-        structs::FstEntryFile::ExternalFile(Box::new(rel_config)),
-    )?;
+        gc_disc.add_file(
+            "rel_config.bin",
+            structs::FstEntryFile::ExternalFile(Box::new(rel_config)),
+        )?;
 
-    const ARTIFACT_TOTEM_SCAN_STRGS: &[ResourceInfo] = &[
-        resource_info!("07_Over_Stonehenge Totem 5.STRG"), // Lifegiver
-        resource_info!("07_Over_Stonehenge Totem 4.STRG"), // Wild
-        resource_info!("07_Over_Stonehenge Totem 10.STRG"), // World
-        resource_info!("07_Over_Stonehenge Totem 9.STRG"), // Sun
-        resource_info!("07_Over_Stonehenge Totem 3.STRG"), // Elder
-        resource_info!("07_Over_Stonehenge Totem 11.STRG"), // Spirit
-        resource_info!("07_Over_Stonehenge Totem 1.STRG"), // Truth
-        resource_info!("07_Over_Stonehenge Totem 7.STRG"), // Chozo
-        resource_info!("07_Over_Stonehenge Totem 6.STRG"), // Warrior
-        resource_info!("07_Over_Stonehenge Totem 12.STRG"), // Newborn
-        resource_info!("07_Over_Stonehenge Totem 8.STRG"), // Nature
-        resource_info!("07_Over_Stonehenge Totem 2.STRG"), // Strength
-    ];
-    for (res_info, strg_text) in ARTIFACT_TOTEM_SCAN_STRGS.iter().zip(artifact_totem_strings.iter()) {
         patcher.add_resource_patch(
             resource_info!("STRG_Main.STRG").into(),// 0x0552a456
             |res| patch_main_strg(res, &config.main_menu_message)
         );
+        
         patcher.add_resource_patch(
             resource_info!("FRME_NewFileSelect.FRME").into(),
             patch_main_menu
@@ -4054,7 +3975,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             patch_gravity_chamber_stalactite_grapple_point
         );
 
-        if version == Version::Ntsc0_02 {
+        if version == Version::NtscU0_02 {
             patcher.add_scly_patch(
                 resource_info!("01_mines_mainplaza.MREA").into(),
                 patch_main_quarry_door_lock_0_02
@@ -4088,7 +4009,8 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             );
         }
 
-        if config.skip_impact_crater {
+        let skip_ending_cutscene = true;
+        if skip_ending_cutscene {
             patcher.add_scly_patch(
                 resource_info!("01_endcinema.MREA").into(),
                 patch_ending_scene_straight_to_credits
@@ -4113,7 +4035,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
         let door_specification = &config.excluded_doors[World::ChozoRuins as usize]["Main Plaza"][4];
         let door_type = match door_specification.as_str() {
-            "random"  => calculate_door_type("Metroid2.pak",&mut rng,&config.door_weights),
             "default" => DoorType::Blue,
             _         => DoorType::from_string(door_specification.to_string()).unwrap(),
         };
@@ -4166,5 +4087,4 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     patcher.run(gc_disc)?;
     Ok(())
-    }
 }

@@ -23,6 +23,7 @@ use crate::{
     memmap,
     mlvl_wrapper,
     pickup_meta::{self, PickupType},
+    door_meta::{DoorType, BlastShieldType, DoorLocation, Weights, World},
     patcher::{PatcherState, PrimePatcher},
     starting_items::StartingItems,
     txtr_conversions::{

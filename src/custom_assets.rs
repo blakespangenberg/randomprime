@@ -27,37 +27,72 @@ macro_rules! def_asset_ids {
 
 pub mod custom_asset_ids {
     def_asset_ids! {
-        PHAZON_SUIT_SCAN: SCAN = 0xDEAF0000,
-        PHAZON_SUIT_STRG: STRG,
-        PHAZON_SUIT_TXTR1: TXTR,
-        PHAZON_SUIT_TXTR2: TXTR,
-        PHAZON_SUIT_CMDL: CMDL,
-        PHAZON_SUIT_ANCS: ANCS,
-        NOTHING_ACQUIRED_HUDMEMO_STRG: STRG,
-        NOTHING_SCAN_STRG: STRG, // 0xDEAF0007
-        NOTHING_SCAN: SCAN,
-        NOTHING_TXTR: TXTR,
-        NOTHING_CMDL: CMDL,
-        NOTHING_ANCS: ANCS,
-        THERMAL_VISOR_SCAN: SCAN,
-        THERMAL_VISOR_STRG: STRG,
-        SCAN_VISOR_ACQUIRED_HUDMEMO_STRG: STRG,
-        SCAN_VISOR_SCAN_STRG: STRG,
-        SCAN_VISOR_SCAN: SCAN,
-        SHINY_MISSILE_TXTR0: TXTR,
-        SHINY_MISSILE_TXTR1: TXTR,
-        SHINY_MISSILE_TXTR2: TXTR,
-        SHINY_MISSILE_CMDL: CMDL,
-        SHINY_MISSILE_ANCS: ANCS,
-        SHINY_MISSILE_EVNT: EVNT,
-        SHINY_MISSILE_ANIM: ANIM,
-        SHINY_MISSILE_ACQUIRED_HUDMEMO_STRG: STRG,
-        SHINY_MISSILE_SCAN_STRG: STRG,
-        SHINY_MISSILE_SCAN: SCAN,
-        STARTING_ITEMS_HUDMEMO_STRG: STRG,
+        PHAZON_SUIT_SCAN = 0xDEAF0000,
+        PHAZON_SUIT_STRG,
+        PHAZON_SUIT_TXTR1,
+        PHAZON_SUIT_TXTR2,
+        PHAZON_SUIT_CMDL,
+        PHAZON_SUIT_ANCS,
+        NOTHING_ACQUIRED_HUDMEMO_STRG,
+        NOTHING_SCAN_STRG, // 0xDEAF0007
+        NOTHING_SCAN,
+        NOTHING_TXTR,
+        NOTHING_CMDL,
+        NOTHING_ANCS,
+        THERMAL_VISOR_SCAN,
+        THERMAL_VISOR_STRG,
+        SCAN_VISOR_ACQUIRED_HUDMEMO_STRG,
+        SCAN_VISOR_SCAN_STRG,
+        SCAN_VISOR_SCAN,
+        SHINY_MISSILE_TXTR0,
+        SHINY_MISSILE_TXTR1,
+        SHINY_MISSILE_TXTR2,
+        SHINY_MISSILE_CMDL,
+        SHINY_MISSILE_ANCS,
+        SHINY_MISSILE_EVNT,
+        SHINY_MISSILE_ANIM,
+        SHINY_MISSILE_ACQUIRED_HUDMEMO_STRG,
+        SHINY_MISSILE_SCAN_STRG,
+        SHINY_MISSILE_SCAN,
 
-        SKIP_HUDMEMO_STRG_START: STRG,
-        SKIP_HUDMEMO_STRG_END: STRG = SKIP_HUDMEMO_STRG_START.to_u32() + 38,
+        // Door Variants //
+        MORPH_BALL_BOMB_DOOR_CMDL,
+        MORPH_BALL_BOMB_DOOR_TXTR,
+        POWER_BOMB_DOOR_CMDL,
+        POWER_BOMB_DOOR_TXTR,
+        MISSILE_DOOR_CMDL,
+        MISSILE_DOOR_TXTR,
+        CHARGE_DOOR_CMDL,
+        CHARGE_DOOR_TXTR,
+        SUPER_MISSILE_DOOR_CMDL,
+        SUPER_MISSILE_DOOR_TXTR,
+        WAVEBUSTER_DOOR_CMDL,
+        WAVEBUSTER_DOOR_TXTR,
+        ICESPREADER_DOOR_CMDL,
+        ICESPREADER_DOOR_TXTR,
+        FLAMETHROWER_DOOR_CMDL,
+        FLAMETHROWER_DOOR_TXTR,
+        DISABLED_DOOR_CMDL,
+        DISABLED_DOOR_TXTR,
+        AI_DOOR_CMDL,
+        AI_DOOR_TXTR,
+        
+        // Vertical Door Variants //
+        VERTICAL_RED_DOOR_CMDL,
+        VERTICAL_POWER_BOMB_DOOR_CMDL,
+        VERTICAL_MORPH_BALL_BOMB_DOOR_CMDL,
+        VERTICAL_MISSILE_DOOR_CMDL,
+        VERTICAL_CHARGE_DOOR_CMDL,
+        VERTICAL_SUPER_MISSILE_DOOR_CMDL,
+        VERTICAL_DISABLED_DOOR_CMDL,
+        VERTICAL_WAVEBUSTER_DOOR_CMDL,
+        VERTICAL_ICESPREADER_DOOR_CMDL,
+        VERTICAL_FLAMETHROWER_DOOR_CMDL,
+        VERTICAL_AI_DOOR_CMDL,
+        
+        // has to be at the end //
+        SKIP_HUDMEMO_STRG_START,
+        SKIP_HUDMEMO_STRG_END = SKIP_HUDMEMO_STRG_START + 38,
     }
 }
 
@@ -113,6 +148,23 @@ fn extra_assets<'r>() -> Vec<Resource<'r>>
 
     extra_assets.iter().map(|&((file_id, fourcc), bytes)| {
         build_resource_raw(file_id, ResourceKind::Unknown(Reader::new(bytes), fourcc))
+    }).collect()
+}
+
+const EXTRA_ASSETS_DOORS: &[(u32, [u8; 4], &[u8])] = &[
+    (custom_asset_ids::AI_DOOR_TXTR,              *b"TXTR", include_bytes!("../extra_assets/holorim_ai.txtr")),
+    (custom_asset_ids::MORPH_BALL_BOMB_DOOR_TXTR, *b"TXTR", include_bytes!("../extra_assets/holorim_bombs.txtr")),
+    (custom_asset_ids::POWER_BOMB_DOOR_TXTR,      *b"TXTR", include_bytes!("../extra_assets/holorim_powerbomb.txtr")),
+    (custom_asset_ids::SUPER_MISSILE_DOOR_TXTR,   *b"TXTR", include_bytes!("../extra_assets/holorim_super.txtr")),
+    (custom_asset_ids::WAVEBUSTER_DOOR_TXTR,      *b"TXTR", include_bytes!("../extra_assets/holorim_wavebuster.txtr")),
+    (custom_asset_ids::ICESPREADER_DOOR_TXTR,     *b"TXTR", include_bytes!("../extra_assets/holorim_icespreader.txtr")),
+    (custom_asset_ids::FLAMETHROWER_DOOR_TXTR,    *b"TXTR", include_bytes!("../extra_assets/holorim_flamethrower.txtr")),
+];
+
+pub fn extra_assets_doors<'r>() -> Vec<Resource<'r>>
+{
+    EXTRA_ASSETS_DOORS.iter().map(|&(file_id, ref fourcc, bytes)| {
+        build_resource(file_id, ResourceKind::Unknown(Reader::new(bytes), fourcc.into()))
     }).collect()
 }
 

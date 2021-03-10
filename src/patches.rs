@@ -4719,8 +4719,6 @@ fn room_strg_id_from_mrea_id(mrea_id: u32) -> (u32, u32)
 fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, version: Version)
     -> Result<(), String>
 {
-    let mut patcher = PrimePatcher::new();
-
     let pickup_layout = &config.layout.pickups[..];
     let elevator_layout = &config.layout.elevators;
 
@@ -4747,9 +4745,9 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     // If the frigate is in play, only show the player's starting items when they land on tallon, otherwise, show in the starting room
     let shown_starting_items = {
         if skip_frigate {
-            config.new_save_starting_items
+            &config.new_save_starting_items
         } else {
-            config.frigate_done_starting_items
+            &config.frigate_done_starting_items
         }
     };
 
@@ -4759,7 +4757,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let mut rng = StdRng::seed_from_u64(config.layout.seed);
     let artifact_totem_strings = build_artifact_temple_totem_scan_strings(pickup_layout, &mut rng);
 
-    let pickup_resources = collect_pickup_resources(gc_disc, &shown_starting_items);
+    let pickup_resources = collect_pickup_resources(gc_disc, shown_starting_items);
     let pickup_resources = &pickup_resources;
 
     let door_resources = collect_door_resources(gc_disc);
@@ -4774,6 +4772,8 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let start_file_select_fmv = gc_disc.find_file(&n).unwrap().file().unwrap().clone();
     let n = format!("Video/04_fileselect_playgame_{}.thp", select_game_fmv_suffix);
     let file_select_play_game_fmv = gc_disc.find_file(&n).unwrap().file().unwrap().clone();
+
+    let mut patcher = PrimePatcher::new();
 
     if !config.keep_fmvs {
         patcher.add_file_patch(b"opening.bnr", |file| patch_bnr(file, config));

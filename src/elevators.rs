@@ -523,7 +523,7 @@ macro_rules! decl_spawn_rooms {
 pub fn spawn_room_data_from_string(_dest_name: String)
 -> SpawnRoomData
 {
-    let dest_name = _dest_name.to_lowercase(); // case insensitive and whitespace insensitve
+    let mut dest_name = _dest_name.to_lowercase(); // case insensitive and whitespace insensitve
     dest_name.retain(|c| !c.is_whitespace());
 
     // Handle special destinations //

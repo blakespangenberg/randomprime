@@ -31,6 +31,7 @@ use crate::{
         PHAZON_SUIT_TEXTURES,
     },
     GcDiscLookupExtensions,
+    ResourceData,
 };
 
 use dol_symbol_table::mp1_symbol;
@@ -155,6 +156,129 @@ pub enum WaterType {
     Lava
 }
 
+fn collect_liquid_resources<'r>(gc_disc: &structs::GcDisc<'r>)
+-> HashMap<(u32, FourCC), structs::Resource<'r>>{
+    // Get list of all dependencies needed by liquids //
+    let mut looking_for: HashSet<_> = WaterType::iter()
+        .flat_map(|pt| pt.dependencies().into_iter())
+        .collect();
+    
+    // Dependencies read from paks and custom assets will go here //
+    let mut found = HashMap::with_capacity(looking_for.len());
+
+    // Iterate through all paks and add add any dependencies to the resource pool //
+    for pak_name in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) { // for all paks
+
+        // get the pak //
+        let file_entry = gc_disc.find_file(pak_name).unwrap();
+        let pak = match *file_entry.file().unwrap() {
+            structs::FstEntryFile::Pak(ref pak) => Cow::Borrowed(pak),
+            structs::FstEntryFile::Unknown(ref reader) => Cow::Owned(reader.clone().read(())),
+            _ => panic!(),
+        };
+
+        // Iterate through all resources in the pak //
+        for res in pak.resources.iter() {
+            let key = (res.file_id, res.fourcc());
+            if looking_for.remove(&key) { // If it's one of our dependencies
+                assert!(found.insert(key, res.into_owned()).is_none()); // collect it
+            }
+        }
+    }
+
+    if !looking_for.is_empty()
+    {
+        println!("error - still looking for {:?}", looking_for);
+    }
+    assert!(looking_for.is_empty());
+    found
+}
+
+// Door assets are not shared across all areas either,
+// so we have to make a cache for them as well.
+fn collect_door_resources<'r>(gc_disc: &structs::GcDisc<'r>)
+    -> HashMap<(u32, FourCC), structs::Resource<'r>>
+{   
+    // Get list of all dependencies needed by custom doors //
+    
+    let mut looking_for = HashSet::<_>::new();
+
+    {
+        let looking_for_door: HashSet<_> = DoorType::iter()
+            .flat_map(|pt| pt.dependencies().into_iter())
+            .collect();
+
+        let looking_for_blast_shield: HashSet<_> = BlastShieldType::iter()
+            .flat_map(|pt| pt.dependencies().into_iter())
+            .collect();
+        
+        for (key, value) in looking_for_door.iter() {
+            looking_for.insert((*key, *value));
+        } 
+        for (key, value) in looking_for_blast_shield.iter() {
+            looking_for.insert((*key, *value));
+        }
+    }
+    
+    // Dependencies read from paks and custom assets will go here //
+    let mut found = HashMap::with_capacity(looking_for.len());
+
+    // Remove extra assets from dependency search since they won't appear     //
+    // in any pak. Instead add them to the output resource pool. These assets //
+    // are provided as external files checked into the repository.            //
+    let extra_assets = extra_assets::extra_assets_doors();
+    for res in extra_assets {
+        looking_for.remove(&(res.file_id, res.fourcc()));
+        assert!(found.insert((res.file_id, res.fourcc()), res.clone()).is_none());
+    }
+
+    // Iterate through all paks and add add any dependencies to the resource pool //
+    for pak_name in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) { // for all paks
+
+        // get the pak //
+        let file_entry = gc_disc.find_file(pak_name).unwrap();
+        let pak = match *file_entry.file().unwrap() {
+            structs::FstEntryFile::Pak(ref pak) => Cow::Borrowed(pak),
+            structs::FstEntryFile::Unknown(ref reader) => Cow::Owned(reader.clone().read(())),
+            _ => panic!(),
+        };
+
+        // Iterate through all resources in the pak //
+        for res in pak.resources.iter() {
+            let key = (res.file_id, res.fourcc());
+            if looking_for.remove(&key) { // If it's one of our dependencies
+                assert!(found.insert(key, res.into_owned()).is_none()); // collect it
+            }
+        }
+    }
+
+    // Generate custom assets (new door variants) //
+    let mut new_assets = vec![];
+
+    for door_type in DoorType::iter() {
+        if door_type.shield_cmdl() >= 0xDEAF0000 {
+            new_assets.push(create_custom_door_cmdl(&found, door_type));
+        }
+    }
+
+    // Add the newly generated resources //
+    for res in new_assets {
+        let key = (res.file_id, res.fourcc());
+        if looking_for.remove(&key) {
+            assert!(found.insert(key, res).is_none());
+        }
+    }
+
+    if !looking_for.is_empty()
+    {
+        println!("error - still looking for {:?}", looking_for);
+    }
+
+    assert!(looking_for.is_empty());
+
+    found
+}
+
 fn create_custom_door_cmdl<'r>(
     resources: &HashMap<(u32, FourCC),
     structs::Resource<'r>>,
@@ -190,7 +314,7 @@ fn create_custom_door_cmdl<'r>(
         new_cmdl_bytes.extend(reader_writer::pad_bytes(32, len).iter());
 
         // Assemble into a proper resource object
-        pickup_meta::build_resource(
+        crate::custom_assets::build_resource(
             new_cmdl_id, // Custom ids start with 0xDEAFxxxx
             structs::ResourceKind::External(new_cmdl_bytes, b"CMDL".into())
         )
@@ -909,15 +1033,7 @@ fn make_elevators_patch<'a>(
             Ok(())
         });
 
-        let dest_name = {
-            if dest_names.len() > idx {
-                &dest_names[idx]
-            }
-            else {
-                dest.name
-            }
-        };
-
+        let dest_name = dest.to_string();
         let room_dest_name = dest_name.replace('\0', "\n");
         let hologram_name = dest_name.replace('\0', " ");
         let control_name = dest_name.replace('\0', " ");
@@ -945,8 +1061,6 @@ fn make_elevators_patch<'a>(
             res.kind = structs::ResourceKind::Strg(strg);
             Ok(())
         });
-
-        idx = idx + 1;
     }
 }
 
@@ -4069,6 +4183,30 @@ pub struct ParsedConfig
     pub quiet: bool,
     pub tiny_elvetator_samus: bool,
 
+    pub elevator_layout: Vec<u8>,
+    pub elevator_layout_override: Vec<String>,
+    pub missile_lock_override: Vec<bool>,
+    pub superheated_rooms: Vec<String>,
+    pub deheated_rooms: Vec<String>,
+    pub drain_liquid_rooms: Vec<String>,
+    pub underwater_rooms: Vec<String>,
+    pub liquid_volumes: Vec<LiquidVolume>,
+    pub aether_transforms: Vec<AetherTransform>,
+    pub additional_items: Vec<AdditionalItem>,
+    pub new_save_spawn_room: String,
+    pub frigate_done_spawn_room: String,
+    pub item_seed: u64,
+    pub seed: u64,
+    pub excluded_doors: [HashMap<String,Vec<String>>;7],
+    pub patch_map: bool,
+    pub patch_power_conduits: bool,
+    pub remove_missile_locks: bool,
+    pub remove_frigidite_lock: bool,
+    pub remove_mine_security_station_locks: bool,
+    pub lower_mines_backwards: bool,
+    pub biohazard_containment_alt_spawn: bool,
+    pub remove_hall_of_the_elders_forcefield: bool,
+
     pub enable_vault_ledge_door: bool,
     pub artifact_hint_behavior: ArtifactHintBehavior,
     pub patch_vertical_to_blue: bool,
@@ -4212,9 +4350,9 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
     Ok(())
 }
 
-fn spawn_room_from_string(room_string: String) -> SpawnRoom {
+fn spawn_room_from_string(room_string: String) -> SpawnRoomData {
     if room_string.to_lowercase() == "credits" {
-        return Elevator::end_game_elevator().to_spawn_room();
+        return Elevator::EndingCinematic.spawn_room_data();
     }
 
     let vec: Vec<&str> = room_string.split(":").collect();
@@ -4282,9 +4420,13 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let pickup_layout = &config.layout.pickups[..];
     let elevator_layout = &config.layout.elevators;
     let spawn_room = config.layout.starting_location;
+
+    let mut rng = StdRng::seed_from_u64(config.layout.seed);
     let artifact_totem_strings = build_artifact_temple_totem_scan_strings(pickup_layout, &mut rng);
 
     let pickup_resources = collect_pickup_resources(gc_disc, &config.random_starting_items);
+    let door_resources = collect_door_resources(gc_disc); 
+    let liquid_resources = collect_liquid_resources(gc_disc);
     let starting_items = StartingItems::merge(config.starting_items.clone(), config.random_starting_items.clone());
 
     // XXX These values need to out live the patcher
@@ -4299,6 +4441,16 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let door_resources = &door_resources;
     let liquid_resources = &liquid_resources;
     let mut patcher = PrimePatcher::new();
+
+    // The room the player spawns in after starting a new save
+    let new_save_spawn_room = spawn_room_from_string(config.new_save_spawn_room.to_string());
+    assert!(new_save_spawn_room.mlvl != World::FrigateOrpheon.mlvl() || !config.skip_frigate); // panic if the games starts in the removed frigate level
+    // println!("new_save_spawn_room - 0x{:X}", new_save_spawn_room.mrea);
+
+    // The room the player spawns in after finishing the frigate level
+    let frigate_done_spawn_room = spawn_room_from_string(config.frigate_done_spawn_room.to_string());
+    assert!(frigate_done_spawn_room.mlvl != World::FrigateOrpheon.mlvl()); // panic if the frigate level gets you stuck in a loop
+
     if !config.keep_fmvs {
         patcher.add_file_patch(b"opening.bnr", |file| patch_bnr(file, config));
         // Replace the attract mode FMVs with empty files to reduce the amount of data we need to

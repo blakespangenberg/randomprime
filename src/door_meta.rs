@@ -1,4 +1,5 @@
 use crate::{pickup_meta::ScriptObjectLocation, custom_assets::custom_asset_ids};
+use structs::{res_id, ResId};
 
 use std::mem;
 use serde::{Serialize, Deserialize};
@@ -65,15 +66,6 @@ pub enum BlastShieldType {
     Wavebuster,
     Icespreader,
     Flamethrower,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Weights {
-    pub tallon_overworld: [u8;4],
-    pub chozo_ruins: [u8;4],
-    pub magmoor_caverns: [u8;4],
-    pub phendrana_drifts: [u8;4],
-    pub phazon_mines: [u8;4]
 }
 
 pub enum World {
@@ -206,7 +198,7 @@ impl DoorType {
         }
     }
 
-    pub const fn shield_cmdl(&self) -> u32 { // model of door, includes specification for which 128x128 texture to line door frame with
+    pub const fn shield_cmdl(&self) -> ResId<res_id::CMDL> { // model of door, includes specification for which 128x128 texture to line door frame with
         match self {
             DoorType::Blue         =>   0x0734977A, // vanilla CMDL - "blueShield_v1" - door frame model
             DoorType::PowerOnly    =>   0x0734977A, // vanilla CMDL - "blueShield_v1" - door frame model
@@ -260,7 +252,7 @@ impl DoorType {
         }
     }
 
-    pub const fn forcefield_txtr(&self) -> u32 { // texture to scroll across center of door for "forcefield" effect 16x16
+    pub const fn forcefield_txtr(&self) -> ResId<res_id::TXTR> { // texture to scroll across center of door for "forcefield" effect 16x16
         match self {
             DoorType::Blue         =>   0x8A7F3683, // vanilla TXTR - blue 16x16
             DoorType::PowerOnly    =>   0x8A7F3683, // vanilla TXTR
@@ -298,7 +290,7 @@ impl DoorType {
         }
     }
 
-    pub fn holorim_texture(&self) -> u32 { // The the color applied from the rim of the door frame, specified in CMDL
+    pub fn holorim_texture(&self) -> ResId<res_id::TXTR> { // The the color applied from the rim of the door frame, specified in CMDL
         match self {
             DoorType::Blue                 =>   0x88ED4593, // vanilla TXTR - "blueholorim" texture [128x128]
             DoorType::PowerOnly            =>   0x88ED4593, // vanilla TXTR
@@ -339,10 +331,10 @@ impl DoorType {
     pub fn dependencies(&self) -> Vec<(u32, FourCC)> { // dependencies to add to the area
         
         let mut data: Vec<(u32, FourCC)> = Vec::new();
-        data.push((self.shield_cmdl(),FourCC::from_bytes(b"CMDL")));
-        data.push((self.forcefield_txtr(),FourCC::from_bytes(b"TXTR")));
+        data.push((self.shield_cmdl().to_u32(),FourCC::from_bytes(b"CMDL")));
+        data.push((self.forcefield_txtr().to_u32(),FourCC::from_bytes(b"TXTR")));
         if self.holorim_texture() != 0x00000000 {
-            data.push((self.holorim_texture(),FourCC::from_bytes(b"TXTR")));
+            data.push((self.holorim_texture().to_u32(),FourCC::from_bytes(b"TXTR")));
         }
 
         // If the door is a t-posing chozo ghost, add that models dependencies as well
@@ -1017,51 +1009,51 @@ impl BlastShieldType {
         }
     }
 
-    pub const fn cmdl(&self) -> u32 {
+    pub const fn cmdl(&self) -> ResId<res_id::CMDL> {
         match self {
-            _ => 0xEFDFFB8C, // Vanilla missile lock model
+            _ => ResId::new(0xEFDFFB8C), // Vanilla missile lock model
         }
     }
 
-    pub const fn sheet_metal_txtr(&self) -> u32 {
+    pub const fn sheet_metal_txtr(&self) -> ResId<res_id::TXTR> {
         match self {
-            _ => 0x6E09EA6B, // Vanilla missile lock txtr
+            _ => ResId::new(0x6E09EA6B), // Vanilla missile lock txtr
         }
     }
 
-    pub const fn glowing_rectangles_txtr(&self) -> u32 {
+    pub const fn glowing_rectangles_txtr(&self) -> ResId<res_id::TXTR> {
         match self {
-            _ => 0x5B97098E, // Vanilla missile lock txtr
+            _ => ResId::new(0x5B97098E), // Vanilla missile lock txtr
         }
     }
 
-    pub const fn misc_rectangles_txtr(&self) -> u32 {
+    pub const fn misc_rectangles_txtr(&self) -> ResId<res_id::TXTR> {
         match self {
-            _ => 0x5C7B215C, // Vanilla missile lock txtr
+            _ => ResId::new(0x5C7B215C), // Vanilla missile lock txtr
         }
     }
 
-    pub const fn animation_txtr(&self) -> u32 {
+    pub const fn animation_txtr(&self) -> ResId<res_id::TXTR> {
         match self {
-            _ => 0xFA0C2AE8, // Vanilla missile lock txtr
+            _ => ResId::new(0xFA0C2AE8), // Vanilla missile lock txtr
         }
     }
     
-    pub const fn misc_metal_txtr(&self) -> u32 {
+    pub const fn misc_metal_txtr(&self) -> ResId<res_id::TXTR> {
         match self {
-            _ => 0xFDE0023A, // Vanilla missile lock txtr
+            _ => ResId::new(0xFDE0023A), // Vanilla missile lock txtr
         }
     }
 
     pub fn dependencies(&self) -> Vec<(u32, FourCC)> { // dependencies to add to the area
         
         let mut data: Vec<(u32, FourCC)> = Vec::new();
-        data.push((self.cmdl(),                     FourCC::from_bytes(b"CMDL")));
-        data.push((self.sheet_metal_txtr(),         FourCC::from_bytes(b"TXTR")));
-        data.push((self.glowing_rectangles_txtr(),  FourCC::from_bytes(b"TXTR")));
-        data.push((self.misc_rectangles_txtr(),     FourCC::from_bytes(b"TXTR")));
-        data.push((self.animation_txtr(),           FourCC::from_bytes(b"TXTR")));
-        data.push((self.misc_metal_txtr(),          FourCC::from_bytes(b"TXTR")));
+        data.push((self.cmdl().to_u32(),                     FourCC::from_bytes(b"CMDL")));
+        data.push((self.sheet_metal_txtr().to_u32(),         FourCC::from_bytes(b"TXTR")));
+        data.push((self.glowing_rectangles_txtr().to_u32(),  FourCC::from_bytes(b"TXTR")));
+        data.push((self.misc_rectangles_txtr().to_u32(),     FourCC::from_bytes(b"TXTR")));
+        data.push((self.animation_txtr().to_u32(),           FourCC::from_bytes(b"TXTR")));
+        data.push((self.misc_metal_txtr().to_u32(),          FourCC::from_bytes(b"TXTR")));
         data.retain(|i| i.0 != 0xffffffff && i.0 != 0);
         data
     }

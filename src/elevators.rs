@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 use enum_map::{Enum, EnumMap};
+use crate::{pickup_meta::{self, PickupType}};
 
 macro_rules! decl_elevators {
     ($($name:ident => { $($contents:tt)* },)*) => {
@@ -69,23 +70,6 @@ macro_rules! decl_elevators {
             };
         }
     };
-}
-
-impl Elevator
-{
-    pub fn default_layout() -> EnumMap<Elevator, SpawnRoom>
-    {
-        EnumMap::from(|elv: Elevator| SpawnRoom::Elevator(elv.default_dest))
-    }
-
-    pub fn to_spawn_room(&self) -> SpawnRoom {
-        SpawnRoom {
-            pak_name: self.pak_name,
-            mlvl: self.mlvl,
-            mrea: self.mrea,
-            mrea_idx: self.mrea_idx,
-        }
-    }
 }
 
 impl std::ops::Deref for Elevator
@@ -469,6 +453,20 @@ macro_rules! decl_spawn_rooms {
                     }
                 }
             }
+
+            pub fn to_string(&self) -> String
+            {
+                for (pak_name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each pak
+                    for room_info in rooms.iter() { // for each room in the pak
+                        if self.spawn_room_data().mrea == room_info.room_id {
+                            return room_info.name;
+                        }
+                    }
+                }
+
+                panic!("Failed to find a specific mrea id in pickup_meta.rs.in");
+                return "";
+            }
         }
     };
 }
@@ -555,6 +553,7 @@ decl_spawn_rooms! {
 
         name: "End of Game",
     },
+    
     FrigateExteriorDockingHangar => {
         pak_name: "Metroid1.pak",
         mlvl: 0x158EFE17,

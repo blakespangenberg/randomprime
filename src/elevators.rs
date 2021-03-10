@@ -508,13 +508,13 @@ macro_rules! decl_spawn_rooms {
                 for (pak_name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each pak
                     for room_info in rooms.iter() { // for each room in the pak
                         if self.spawn_room_data().mrea == room_info.room_id {
-                            return room_info.name;
+                            return room_info.name.to_string();
                         }
                     }
                 }
 
                 panic!("Failed to find a specific mrea id in pickup_meta.rs.in");
-                return "";
+                return "".to_string();
             }
         }
     };
@@ -523,7 +523,8 @@ macro_rules! decl_spawn_rooms {
 pub fn spawn_room_data_from_string(_dest_name: String)
 -> SpawnRoomData
 {
-    let dest_name = _dest_name.to_lowercase().retain(|c| !c.is_whitespace()); // case insensitive and whitespace insensitve
+    let dest_name = _dest_name.to_lowercase(); // case insensitive and whitespace insensitve
+    dest_name.retain(|c| !c.is_whitespace());
 
     // Handle special destinations //
     if dest_name == "credits" {
@@ -536,7 +537,9 @@ pub fn spawn_room_data_from_string(_dest_name: String)
 
     // Handle elevator destinations //
     for elevator in Elevator::iter() {
-        if elevator.name.to_lowercase().replace("\0","").retain(|c| !c.is_whitespace()) == dest_name {
+        let elevator_name = elevator.name.to_lowercase();
+        elevator_name.replace("\0","").retain(|c| !c.is_whitespace());
+        if elevator_name == dest_name {
             return elevator.spawn_room_data();
         }
     }
@@ -558,14 +561,14 @@ pub fn spawn_room_data_from_string(_dest_name: String)
         for room_info in rooms.iter() { // for each room in the pak
             if room_info.name.to_lowercase() == room_name.to_lowercase() {
 
-                SpawnRoomData {
+                return SpawnRoomData {
                     pak_name,
                     mlvl: world.mlvl(),
                     mrea: room_info.room_id,
                     mrea_idx: idx,
                     room_id: 0,
-                    name: room_info,
-                }
+                    name: room_info.name,
+                };
             }
             idx = idx + 1;
         }

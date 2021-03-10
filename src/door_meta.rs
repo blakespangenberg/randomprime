@@ -113,7 +113,7 @@ impl DoorType {
     }
 
     pub fn from_string(string: String) -> Option<Self> {
-        match string.to_lowercase().as_str() {
+        match string.trim().to_lowercase().as_str() {
             "blue"           => Some(DoorType::Blue         ),
             "power_only"     => Some(DoorType::PowerOnly    ),
             "purple"         => Some(DoorType::Purple       ),

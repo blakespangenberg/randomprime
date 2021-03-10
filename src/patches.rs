@@ -18,7 +18,7 @@ use crate::{
     custom_assets::custom_asset_ids,
     dol_patcher::DolPatcher,
     ciso_writer::CisoWriter,
-    elevators::{Elevator, SpawnRoom, World, spawn_room_data_from_string},
+    elevators::{Elevator, SpawnRoom, SpawnRoomData, World, spawn_room_data_from_string},
     gcz_writer::GczWriter,
     memmap,
     mlvl_wrapper,
@@ -98,7 +98,10 @@ const ALWAYS_MODAL_HUDMENUS: &[usize] = &[23, 50, 63];
 // When changing a pickup, we need to give the room a copy of the resources/
 // assests used by the pickup. Create a cache of all the resources needed by
 // any pickup.
-fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &StartingItems)
+fn collect_pickup_resources<'r>(
+    gc_disc: &structs::GcDisc<'r>,
+    starting_items: &StartingItems
+)
     -> HashMap<(u32, FourCC), structs::Resource<'r>>
 {
     // Get list of all dependencies patcher needs //
@@ -1335,6 +1338,8 @@ fn make_elevators_patch<'a>(
                     let wt = obj.property_data.as_world_transporter_mut().unwrap();
                     wt.mrea = ResId::new(dest.mrea);
                     wt.mlvl = ResId::new(dest.mlvl);
+
+                    // TODO: only do this if the destination isn't found in the elevators list
                     wt.volume = 0; // if we don't turn down the volume of the "wooshing" effect, the player will hear it indefinitely if the destination isn't a WorldTransporter
                     
                     if tiny_elvetator_samus
@@ -1488,7 +1493,10 @@ fn patch_ending_scene_straight_to_credits(
 }
 
 
-fn patch_frigate_teleporter<'r>(area: &mut mlvl_wrapper::MlvlArea, spawn_room: SpawnRoom)
+fn patch_frigate_teleporter<'r>(
+    area: &mut mlvl_wrapper::MlvlArea,
+    spawn_room: SpawnRoomData,
+)
     -> Result<(), String>
 {
     let scly = area.mrea().scly_section_mut();
@@ -4079,7 +4087,7 @@ fn patch_starting_pickups<'r>(
 
 include!("../compile_to_ppc/patches_config.rs");
 fn create_rel_config_file(
-    spawn_room: SpawnRoom,
+    spawn_room: SpawnRoomData,
     quickplay: bool,
 ) -> Vec<u8>
 {
@@ -4094,7 +4102,7 @@ fn create_rel_config_file(
 
 fn patch_dol<'r>(
     file: &mut structs::FstEntryFile,
-    spawn_room: SpawnRoom,
+    spawn_room: SpawnRoomData,
     version: Version,
     config: &ParsedConfig,
 ) -> Result<(), String>
@@ -4510,12 +4518,10 @@ pub struct ParsedConfig
 {
     pub input_iso: memmap::Mmap,
     pub output_iso: File,
-    // pub layout_string: String,
 
     pub layout: crate::Layout,
 
     pub iso_format: IsoFormat,
-    pub skip_frigate: bool,
     pub skip_hudmenus: bool,
     pub keep_fmvs: bool,
     pub obfuscate_items: bool,
@@ -4542,10 +4548,7 @@ pub struct ParsedConfig
     pub additional_items: Vec<AdditionalItem>,
     pub new_save_spawn_room: String,
     pub frigate_done_spawn_room: String,
-    pub item_seed: u64,
-    pub seed: u64,
     pub excluded_doors: [HashMap<String,Vec<String>>;7],
-    pub patch_map: bool,
     pub patch_power_conduits: bool,
     pub remove_missile_locks: bool,
     pub remove_frigidite_lock: bool,
@@ -4554,16 +4557,15 @@ pub struct ParsedConfig
     pub biohazard_containment_alt_spawn: bool,
     pub remove_hall_of_the_elders_forcefield: bool,
 
-    pub enable_vault_ledge_door: bool,
+    pub enable_vault_ledge_door: bool, // TODO: remove this, and just make the door blue/disabled
     pub artifact_hint_behavior: ArtifactHintBehavior,
-    pub patch_vertical_to_blue: bool,
 
     pub flaahgra_music_files: Option<[nod_wrapper::FileWrapper; 2]>,
 
     pub suit_hue_rotate_angle: Option<i32>,
 
-    pub new_save_starting_items: u64,
-    pub frigate_done_starting_items: u64,
+    pub new_save_starting_items: StartingItems,
+    pub frigate_done_starting_items: StartingItems,
 
     pub comment: String,
     pub main_menu_message: String,
@@ -4617,7 +4619,6 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
     writeln!(ct).unwrap();
     writeln!(ct, "Options used:").unwrap();
     writeln!(ct, "layout: {:#?}", config.layout).unwrap();
-    writeln!(ct, "skip frigate: {}", config.skip_frigate).unwrap();
     writeln!(ct, "keep fmvs: {}", config.keep_fmvs).unwrap();
     writeln!(ct, "nonmodal hudmemos: {}", config.skip_hudmenus).unwrap();
     writeln!(ct, "obfuscated items: {}", config.obfuscate_items).unwrap();
@@ -4718,17 +4719,54 @@ fn room_strg_id_from_mrea_id(mrea_id: u32) -> (u32, u32)
 fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, version: Version)
     -> Result<(), String>
 {
+    let mut patcher = PrimePatcher::new();
+
     let pickup_layout = &config.layout.pickups[..];
     let elevator_layout = &config.layout.elevators;
-    let spawn_room = config.layout.starting_location;
+
+    let new_save_spawn_room = spawn_room_data_from_string(config.new_save_spawn_room.to_string());
+    let frigate_done_spawn_room = spawn_room_data_from_string(config.frigate_done_spawn_room.to_string());
+    assert!(frigate_done_spawn_room.mlvl != World::FrigateOrpheon.mlvl()); // panic if the frigate level gets you stuck in a loop
+
+    /*** Come to a few logical conclusions about patching options ***/
+
+    // If none of the elevators go to frigate, and the spawn room isn't frigate, we can remove it to improve patch time
+    let skip_frigate = {
+        if new_save_spawn_room.mlvl == World::FrigateOrpheon.mlvl() {
+            false
+        } else {
+            elevator_layout.values()
+            .any(|sr| sr.spawn_room_data().mlvl == World::FrigateOrpheon.mlvl())
+        }
+    };
+
+    // If any of the elevators go straight to the ending, patch out the pre-credits cutscene
+    let skip_ending_cinematic = elevator_layout.values()
+    .any(|sr| sr == &SpawnRoom::EndingCinematic);
+
+    // If the frigate is in play, only show the player's starting items when they land on tallon, otherwise, show in the starting room
+    let shown_starting_items = {
+        if skip_frigate {
+            config.new_save_starting_items
+        } else {
+            config.frigate_done_starting_items
+        }
+    };
+
+    assert!(new_save_spawn_room.mlvl != World::FrigateOrpheon.mlvl() || skip_frigate); // panic if the games starts in the removed frigate level
+
 
     let mut rng = StdRng::seed_from_u64(config.layout.seed);
     let artifact_totem_strings = build_artifact_temple_totem_scan_strings(pickup_layout, &mut rng);
 
-    let pickup_resources = collect_pickup_resources(gc_disc, &config.random_starting_items);
-    let door_resources = collect_door_resources(gc_disc); 
+    let pickup_resources = collect_pickup_resources(gc_disc, &shown_starting_items);
+    let pickup_resources = &pickup_resources;
+
+    let door_resources = collect_door_resources(gc_disc);
+    let door_resources = &door_resources;
+
     let liquid_resources = collect_liquid_resources(gc_disc);
-    let starting_items = StartingItems::merge(config.starting_items.clone(), config.random_starting_items.clone());
+    let liquid_resources = &liquid_resources;
 
     // XXX These values need to out live the patcher
     let select_game_fmv_suffix = ["A", "B", "C"].choose(&mut rng).unwrap();
@@ -4736,21 +4774,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let start_file_select_fmv = gc_disc.find_file(&n).unwrap().file().unwrap().clone();
     let n = format!("Video/04_fileselect_playgame_{}.thp", select_game_fmv_suffix);
     let file_select_play_game_fmv = gc_disc.find_file(&n).unwrap().file().unwrap().clone();
-
-
-    let pickup_resources = &pickup_resources;
-    let door_resources = &door_resources;
-    let liquid_resources = &liquid_resources;
-    let mut patcher = PrimePatcher::new();
-
-    // The room the player spawns in after starting a new save
-    let new_save_spawn_room = spawn_room_data_from_string(config.new_save_spawn_room.to_string());
-    assert!(new_save_spawn_room.mlvl != World::FrigateOrpheon.mlvl() || !config.skip_frigate); // panic if the games starts in the removed frigate level
-    // println!("new_save_spawn_room - 0x{:X}", new_save_spawn_room.mrea);
-
-    // The room the player spawns in after finishing the frigate level
-    let frigate_done_spawn_room = spawn_room_data_from_string(config.frigate_done_spawn_room.to_string());
-    assert!(frigate_done_spawn_room.mlvl != World::FrigateOrpheon.mlvl()); // panic if the frigate level gets you stuck in a loop
 
     if !config.keep_fmvs {
         patcher.add_file_patch(b"opening.bnr", |file| patch_bnr(file, config));
@@ -4918,7 +4941,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         let world = World::from_pak(name).unwrap();
         let level = world as usize;
 
-        if level == 0 && config.skip_frigate {continue;} // If we're skipping the frigate, there's nothing to patch
+        if level == 0 && skip_frigate {continue;} // If we're skipping the frigate, there's nothing to patch
 
         for room_info in rooms.iter() { // for each room in the pak
             // patch the item locations
@@ -4966,6 +4989,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
                 
                 // println!("excluded_doors[{}][{}][{}]", level, room_info.name.to_string(), door_index);
                 let door_specification = &config.excluded_doors[level][room_info.name][door_index];
+                if door_specification.to_lowercase().trim() == "default" { continue; }
 
                 let is_vertical_door =  (room_info.room_id == 0x11BD63B7 && door_index == 0) || // Tower Chamber
                                         (room_info.room_id == 0x0D72F1F7 && door_index == 1) || // Tower of Light
@@ -4982,35 +5006,25 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
                                         (room_info.room_id == 0x956F1552 && door_index == 1) || // Mine Security Station
                                         (room_info.room_id == 0xC50AF17A && door_index == 2) || // Elite Control
                                         (room_info.room_id == 0x90709AAC && door_index == 1);   // Ventilation Shaft
-
-                let mut door_type;
                 
-                if door_specification != "default" {
-                    door_type = DoorType::from_string(door_specification.to_string()).unwrap();
-                }
-                
-                if is_vertical_door {
-                    if config.patch_vertical_to_blue {
-                        door_type = DoorType::VerticalBlue;
+                let door_type = {
+                    let mut _door_type = DoorType::from_string(door_specification.to_string()).unwrap();
+                    if is_vertical_door {
+                        _door_type = _door_type.to_vertical();
                     }
-                    else {
-                        door_type = door_type.to_vertical();
-                    }
-                }
+                    _door_type
+                };
 
-                if (door_specification != "default") || (is_vertical_door && config.patch_vertical_to_blue)
-                {
-                    patcher.add_scly_patch(
-                        (name.as_bytes(), room_info.room_id),
-                        move |_ps, area| patch_door(_ps, area,door_location,door_type, BlastShieldType::Missile, door_resources,config.powerbomb_lockpick)
+                patcher.add_scly_patch(
+                    (name.as_bytes(), room_info.room_id),
+                    move |_ps, area| patch_door(_ps, area,door_location, door_type, BlastShieldType::Missile, door_resources, config.powerbomb_lockpick)
+                );
+                
+                if room_info.mapa_id != 0 {
+                    patcher.add_resource_patch(
+                        (&[name.as_bytes()], room_info.mapa_id,b"MAPA".into()),
+                        move |res| patch_map_door_icon(res,door_location, door_type)
                     );
-                    
-                    if room_info.mapa_id != 0 {
-                        patcher.add_resource_patch(
-                            (&[name.as_bytes()], room_info.mapa_id,b"MAPA".into()),
-                            move |res| patch_map_door_icon(res,door_location,door_type)
-                        );
-                    }
                 }
             }
         }
@@ -5027,7 +5041,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     }
 
     let rel_config;
-    if config.skip_frigate {
+    if skip_frigate {
         patcher.add_file_patch(
             b"default.dol",
             move |file| patch_dol(
@@ -5069,18 +5083,22 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         resource_info!("01_over_mainplaza.MREA").into(),
         patch_landing_site_cutscene_triggers
     );
-    
+
+    let new_save_starting_items = {
+
+    };
+
     // New Save Room Starting Items //
     patcher.add_scly_patch(
         (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
-        move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false, pickup_resources)
+        move |_ps, area| patch_starting_pickups(area, &config.new_save_starting_items, false, pickup_resources)
     );
 
     // Post Frigate Starting Items //
-    if !config.skip_frigate && frigate_done_spawn_room.mrea != new_save_spawn_room.mrea { // but only if it won't override an existing patch
+    if !skip_frigate && frigate_done_spawn_room.mrea != new_save_spawn_room.mrea { // but only if it won't override an existing patch
         patcher.add_scly_patch(
             (frigate_done_spawn_room.pak_name.as_bytes(), frigate_done_spawn_room.mrea),
-            move |_ps, area| patch_starting_pickups(area, config.frigate_done_starting_items, false, pickup_resources)
+            move |_ps, area| patch_starting_pickups(area, &config.frigate_done_starting_items, false, pickup_resources)
         );
     }
     patcher.add_resource_patch(
@@ -5304,9 +5322,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         );
     }
 
-    // If any of the elevators go straight to the ending, patch out the pre-credits cutscene.
-    let skip_ending_cinematic = elevator_layout.values()
-    .any(|sr| sr == &SpawnRoom::EndingCinematic);
     if skip_ending_cinematic {
         patcher.add_scly_patch(
             resource_info!("01_endcinema.MREA").into(),
@@ -5343,7 +5358,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             );
         }
 
-        if config.patch_map {
+        {
             patcher.add_resource_patch(
                 resource_info!("01_mainplaza.MAPA").into(),
                 move |res| patch_main_plaza_locked_door_map_icon(res,door_type)

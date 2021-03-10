@@ -171,7 +171,8 @@ pub fn extra_assets_doors<'r>() -> Vec<Resource<'r>>
 }
 
 pub fn custom_assets<'r>(
-    resources: &HashMap<(u32, FourCC), structs::Resource<'r>>,
+    resources: &HashMap<(u32, FourCC),
+    structs::Resource<'r>>,
     starting_items: &StartingItems
 ) -> Vec<Resource<'r>>
 {

@@ -528,11 +528,11 @@ pub fn spawn_room_data_from_string(_dest_name: String)
 
     // Handle special destinations //
     if dest_name == "credits" {
-        return SpawnRoom::EndingCinematic.spawn_room_data();
+        return *SpawnRoom::EndingCinematic.spawn_room_data();
     }
 
     if dest_name == "frigate" {
-        return SpawnRoom::FrigateExteriorDockingHangar.spawn_room_data();
+        return *SpawnRoom::FrigateExteriorDockingHangar.spawn_room_data();
     }
 
     // Handle elevator destinations //
@@ -540,7 +540,7 @@ pub fn spawn_room_data_from_string(_dest_name: String)
         let elevator_name = elevator.name.to_lowercase();
         elevator_name.replace("\0","").retain(|c| !c.is_whitespace());
         if elevator_name == dest_name {
-            return elevator.spawn_room_data();
+            return *elevator.spawn_room_data();
         }
     }
 

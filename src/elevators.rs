@@ -4,6 +4,55 @@ use serde::Deserialize;
 use enum_map::{Enum, EnumMap};
 use crate::{pickup_meta::{self, PickupType}};
 
+pub enum World {
+    FrigateOrpheon,
+    TallonOverworld,
+    ChozoRuins,
+    MagmoorCaverns,
+    PhendranaDrifts,
+    PhazonMines,
+    ImpactCrater,
+}
+
+impl World {
+    pub fn from_pak(pak_str:&str) -> Option<Self> {
+        match pak_str {
+            "Metroid1.pak" => Some(World::FrigateOrpheon),
+            "Metroid2.pak" => Some(World::ChozoRuins),
+            "Metroid3.pak" => Some(World::PhendranaDrifts),
+            "Metroid4.pak" => Some(World::TallonOverworld),
+            "metroid5.pak" => Some(World::PhazonMines),
+            "Metroid6.pak" => Some(World::MagmoorCaverns),
+            "Metroid7.pak" => Some(World::ImpactCrater),
+            _ => None
+        }
+    }
+
+    pub fn mlvl(&self) -> u32 {
+        match self {
+            World::FrigateOrpheon  => 0x158efe17,
+            World::ChozoRuins      => 0x83f6ff6f,
+            World::PhendranaDrifts => 0xa8be6291,
+            World::TallonOverworld => 0x39f2de28,
+            World::PhazonMines     => 0xb1ac4d65,
+            World::MagmoorCaverns  => 0x3ef8237c,
+            World::ImpactCrater    => 0xc13b09d1,
+        }
+    }
+
+    pub fn as_string(&self) -> String {
+        match self {
+            World::FrigateOrpheon  => "Frigate Orpheon"   .to_string(),
+            World::ChozoRuins      => "Chozo Ruins"       .to_string(),
+            World::PhendranaDrifts => "Phendrana Drifts"  .to_string(),
+            World::TallonOverworld => "Tallon Overworld"  .to_string(),
+            World::PhazonMines     => "Mines, Phazon"     .to_string(),
+            World::MagmoorCaverns  => "Magmoor Caverns"   .to_string(),
+            World::ImpactCrater    => "Crater, Impact"    .to_string(),
+        }
+    }
+}
+
 macro_rules! decl_elevators {
     ($($name:ident => { $($contents:tt)* },)*) => {
 
@@ -471,6 +520,61 @@ macro_rules! decl_spawn_rooms {
     };
 }
 
+pub fn spawn_room_data_from_string(_dest_name: String)
+-> SpawnRoomData
+{
+    let dest_name = _dest_name.to_lowercase().retain(|c| !c.is_whitespace()); // case insensitive and whitespace insensitve
+
+    // Handle special destinations //
+    if dest_name == "credits" {
+        return SpawnRoom::EndingCinematic.spawn_room_data();
+    }
+
+    if dest_name == "frigate" {
+        return SpawnRoom::FrigateExteriorDockingHangar.spawn_room_data();
+    }
+
+    // Handle elevator destinations //
+    for elevator in Elevator::iter() {
+        if elevator.name.to_lowercase().replace("\0","").retain(|c| !c.is_whitespace()) == dest_name {
+            return elevator.spawn_room_data();
+        }
+    }
+
+    // Handle specific room destinations //
+    let vec: Vec<&str> = dest_name.split(":").collect();
+    assert!(vec.len() == 2);
+    let world_name = vec[0];
+    let room_name = vec[1];
+
+    for (pak_name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each pak
+        let world = World::from_pak(pak_name).unwrap();
+
+        if !world.as_string().to_lowercase().starts_with(&world_name.to_lowercase()) {
+            continue;
+        }
+
+        let mut idx: u32 = 0;
+        for room_info in rooms.iter() { // for each room in the pak
+            if room_info.name.to_lowercase() == room_name.to_lowercase() {
+
+                SpawnRoomData {
+                    pak_name,
+                    mlvl: world.mlvl(),
+                    mrea: room_info.room_id,
+                    mrea_idx: idx,
+                    room_id: 0,
+                    name: room_info,
+                }
+            }
+            idx = idx + 1;
+        }
+    }
+
+    println!("Error - Could not find room '{}'", _dest_name);
+    panic!("");
+}
+
 impl std::ops::Deref for SpawnRoom
 {
     type Target = SpawnRoomData;
@@ -531,7 +635,6 @@ impl From<ElevatorData> for SpawnRoomData
     }
 }
 
-
 decl_spawn_rooms! {
     LandingSite => {
         pak_name: "Metroid4.pak",
@@ -553,7 +656,7 @@ decl_spawn_rooms! {
 
         name: "End of Game",
     },
-    
+
     FrigateExteriorDockingHangar => {
         pak_name: "Metroid1.pak",
         mlvl: 0x158EFE17,

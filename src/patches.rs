@@ -18,12 +18,12 @@ use crate::{
     custom_assets::custom_asset_ids,
     dol_patcher::DolPatcher,
     ciso_writer::CisoWriter,
-    elevators::{Elevator, SpawnRoom},
+    elevators::{Elevator, SpawnRoom, World, spawn_room_data_from_string},
     gcz_writer::GczWriter,
     memmap,
     mlvl_wrapper,
     pickup_meta::{self, PickupType},
-    door_meta::{DoorType, BlastShieldType, DoorLocation, World},
+    door_meta::{DoorType, BlastShieldType, DoorLocation},
     patcher::{PatcherState, PrimePatcher},
     starting_items::StartingItems,
     txtr_conversions::{
@@ -226,7 +226,7 @@ fn collect_door_resources<'r>(gc_disc: &structs::GcDisc<'r>)
     // Remove extra assets from dependency search since they won't appear     //
     // in any pak. Instead add them to the output resource pool. These assets //
     // are provided as external files checked into the repository.            //
-    let extra_assets = extra_assets::extra_assets_doors();
+    let extra_assets = crate::custom_assets::extra_assets_doors();
     for res in extra_assets {
         looking_for.remove(&(res.file_id, res.fourcc()));
         assert!(found.insert((res.file_id, res.fourcc()), res.clone()).is_none());
@@ -315,7 +315,7 @@ fn create_custom_door_cmdl<'r>(
 
         // Assemble into a proper resource object
         crate::custom_assets::build_resource(
-            new_cmdl_id, // Custom ids start with 0xDEAFxxxx
+            ResId::<res_id::CMDL>::new(new_cmdl_id), // Custom ids start with 0xDEAFxxxx
             structs::ResourceKind::External(new_cmdl_bytes, b"CMDL".into())
         )
     };
@@ -4350,52 +4350,6 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
     Ok(())
 }
 
-fn spawn_room_from_string(room_string: String) -> SpawnRoomData {
-    if room_string.to_lowercase() == "credits" {
-        return Elevator::EndingCinematic.spawn_room_data();
-    }
-
-    let vec: Vec<&str> = room_string.split(":").collect();
-    assert!(vec.len() == 2);
-    let world_name = vec[0];
-    let room_name = vec[1];
-
-    for (pak_name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each pak
-        let world = World::from_pak(pak_name).unwrap();
-
-        if !world.as_string().to_lowercase().starts_with(&world_name.to_lowercase()) {
-            continue;
-        }
-
-        let mut idx: u32 = 0;
-        for room_info in rooms.iter() { // for each room in the pak
-            if room_info.name.to_lowercase() == room_name.to_lowercase() {
-
-                /*
-                println!("\n'{}' interpreted as:", room_string);
-                println!("'{}'", room_info.name);
-                println!("pak name - {:?}",pak_name);
-                println!("mlvl - {:X}",world.mlvl());
-                println!("mrea - {:X}",room_info.room_id);
-                println!("mrea_idx - {}",idx);
-                */
-
-                return SpawnRoom {
-                    pak_name,
-                    mlvl: world.mlvl(),
-                    mrea: room_info.room_id,
-                    mrea_idx: idx,
-                };
-            }
-            idx = idx + 1;
-        }
-    }
-
-    println!("Error - Could not find room '{}'", room_string);
-    assert!(false);
-    return SpawnRoom::landing_site_spawn_room();
-}
-
 fn room_strg_id_from_mrea_id(mrea_id: u32) -> (u32, u32)
 {
     for _ in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) {
@@ -4443,12 +4397,12 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let mut patcher = PrimePatcher::new();
 
     // The room the player spawns in after starting a new save
-    let new_save_spawn_room = spawn_room_from_string(config.new_save_spawn_room.to_string());
+    let new_save_spawn_room = spawn_room_data_from_string(config.new_save_spawn_room.to_string());
     assert!(new_save_spawn_room.mlvl != World::FrigateOrpheon.mlvl() || !config.skip_frigate); // panic if the games starts in the removed frigate level
     // println!("new_save_spawn_room - 0x{:X}", new_save_spawn_room.mrea);
 
     // The room the player spawns in after finishing the frigate level
-    let frigate_done_spawn_room = spawn_room_from_string(config.frigate_done_spawn_room.to_string());
+    let frigate_done_spawn_room = spawn_room_data_from_string(config.frigate_done_spawn_room.to_string());
     assert!(frigate_done_spawn_room.mlvl != World::FrigateOrpheon.mlvl()); // panic if the frigate level gets you stuck in a loop
 
     if !config.keep_fmvs {
@@ -4539,7 +4493,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     // Make superheated rooms normal temperature
     for room_name in config.deheated_rooms.iter() {
-        let room = spawn_room_from_string(room_name.to_string());
+        let room = spawn_room_data_from_string(room_name.to_string());
 
         patcher.add_scly_patch(
             (room.pak_name.as_bytes(), room.mrea),
@@ -4549,7 +4503,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     // Make rooms superheated
     for room_name in config.superheated_rooms.iter() {
-        let room = spawn_room_from_string(room_name.to_string());
+        let room = spawn_room_data_from_string(room_name.to_string());
 
         patcher.add_scly_patch(
             (room.pak_name.as_bytes(), room.mrea),
@@ -4559,7 +4513,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     // Drain rooms of liquids
     for room_name in config.drain_liquid_rooms.iter() {
-        let room = spawn_room_from_string(room_name.to_string());
+        let room = spawn_room_data_from_string(room_name.to_string());
         patcher.add_scly_patch(
             (room.pak_name.as_bytes(), room.mrea),
             move |_ps, area| patch_remove_water(_ps, area),
@@ -4568,7 +4522,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     // Place liquids
     for liquid_volume in config.liquid_volumes.iter() {
-        let room = spawn_room_from_string(liquid_volume.room.to_string());
+        let room = spawn_room_data_from_string(liquid_volume.room.to_string());
 
         let water_type = {
             let liquid_type = liquid_volume.liquid_type.to_lowercase();
@@ -4594,7 +4548,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     // Place bounding box liquids //
     for room_name in config.underwater_rooms.iter()
     {
-        let room = spawn_room_from_string(room_name.to_string());
+        let room = spawn_room_data_from_string(room_name.to_string());
         patcher.add_scly_patch(
             (room.pak_name.as_bytes(), room.mrea),
             move |_ps, area| patch_full_underwater(_ps, area, liquid_resources),
@@ -4604,7 +4558,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     // Re-size bounding box //
     for aether_transform in config.aether_transforms.iter()
     {
-        let room = spawn_room_from_string(aether_transform.room.to_string());
+        let room = spawn_room_data_from_string(aether_transform.room.to_string());
         patcher.add_scly_patch(
             (room.pak_name.as_bytes(), room.mrea),
             move |_ps, area| patch_transform_bounding_box(_ps, area, aether_transform.offset, aether_transform.scale),
@@ -4718,7 +4672,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     // add additional items //
     for item in config.additional_items.iter()
     {
-        let room = spawn_room_from_string(item.room.to_string());
+        let room = spawn_room_data_from_string(item.room.to_string());
         patcher.add_scly_patch(
             (room.pak_name.as_bytes(), room.mrea),
             move |_ps, area| patch_add_item(_ps, area, PickupType::from_string(item.item_type.to_string()), item.position, pickup_resources, config),
@@ -4772,14 +4726,14 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     // New Save Room Starting Items //
     patcher.add_scly_patch(
         (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),
-        move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false)
+        move |_ps, area| patch_starting_pickups(area, config.new_save_starting_items, false, pickup_resources)
     );
 
     // Post Frigate Starting Items //
     if !config.skip_frigate && frigate_done_spawn_room.mrea != new_save_spawn_room.mrea { // but only if it won't override an existing patch
         patcher.add_scly_patch(
             (frigate_done_spawn_room.pak_name.as_bytes(), frigate_done_spawn_room.mrea),
-            move |_ps, area| patch_starting_pickups(area, config.frigate_done_starting_items, false)
+            move |_ps, area| patch_starting_pickups(area, config.frigate_done_starting_items, false, pickup_resources)
         );
     }
     patcher.add_resource_patch(
@@ -4842,7 +4796,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         );
     }
 
-	make_elevators_patch(&mut patcher, &elevator_layout, &config.elevator_layout_override, config.auto_enabled_elevators, config.tiny_elvetator_samus);
+	make_elevators_patch(&mut patcher, &elevator_layout, config.auto_enabled_elevators, config.tiny_elvetator_samus);
 
     make_elite_research_fight_prereq_patches(&mut patcher);
 
@@ -4984,7 +4938,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         );
         patcher.add_scly_patch(
             resource_info!("05_ice_shorelines.MREA").into(),
-            patch_ruined_courtyard_thermal_conduits_0_02
+            move |ps, area| patch_ruined_courtyard_thermal_conduits(ps, area, version)
         );
     }
 

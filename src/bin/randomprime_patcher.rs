@@ -104,11 +104,9 @@ fn default_as_empty_aether_transform_vec() -> Vec<patches::AetherTransform> {
     Vec::new()
 }
 
-
 fn default_as_empty_add_items_vec() -> Vec<patches::AdditionalItem> {
     Vec::new()
 }
-
 
 fn default_empty_string() -> String {
     "".to_string()
@@ -120,7 +118,6 @@ fn default_u64_123456789() -> u64 {
 
 #[derive(Deserialize)]
 struct PatchConfig {
-    skip_frigate: bool,
     skip_crater: bool,
     fix_flaaghra_music: bool,
     trilogy_iso: Option<String>,
@@ -205,16 +202,9 @@ struct Config {
     frigate_done_spawn_room: String,
 
     seed: u64,
-    door_weights: Weights,
     patch_settings: PatchConfig,
-    
-    #[serde(default = "default_u64_123456789")]
-    starting_pickups: u64,
 
-    #[serde(default = "default_u64_123456789")]
     new_save_starting_items: u64,
-
-    #[serde(default = "default_u64_123456789")]
     frigate_done_starting_items: u64,
     
     excluded_doors: [HashMap<String,Vec<String>>;7],
@@ -406,7 +396,11 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         None
     };
 
-    let random_starting_items = matches.value_of("random starting items")
+    let new_save_starting_items = matches.value_of("new save starting items")
+        .map(|s| StartingItems::from_u64(s.parse().unwrap()))
+        .unwrap_or(StartingItems::from_u64(0));
+
+    let frigate_done_starting_items = matches.value_of("frigate done starting items")
         .map(|s| StartingItems::from_u64(s.parse().unwrap()))
         .unwrap_or(StartingItems::from_u64(0));
 
@@ -414,11 +408,34 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         input_iso: input_iso_mmap,
         output_iso: out_iso,
 
+        additional_items: vec![].into(),
+        aether_transforms: vec![].into(),
+        deheated_rooms: vec![].into(),
+        superheated_rooms: vec![].into(),
+        drain_liquid_rooms: vec![].into(),
+        liquid_volumes: vec![].into(),
+        underwater_rooms: vec![].into(),
+        missile_lock_override: vec![].into(),
+        
+        excluded_doors: config.excluded_doors,
+        new_save_spawn_room: config.new_save_spawn_room,
+        frigate_done_spawn_room: config.frigate_done_spawn_room,
+        new_save_starting_items,
+        frigate_done_starting_items,
+
+        biohazard_containment_alt_spawn: false,
+        powerbomb_lockpick: false,
+        remove_frigidite_lock: false,
+        patch_power_conduits: false,
+        lower_mines_backwards: false,
+        remove_hall_of_the_elders_forcefield: false,
+        remove_mine_security_station_locks: false,
+        remove_missile_locks: false,
+
         layout,
 
         iso_format,
         skip_hudmenus: matches.is_present("skip hudmenus"),
-        skip_frigate: matches.is_present("skip frigate"),
         etank_capacity: matches.value_of("etank capacity")
                                     .unwrap_or_default()
                                     .parse::<u32>()
@@ -444,35 +461,25 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         enable_vault_ledge_door: matches.is_present("enable vault ledge door"),
 
         artifact_hint_behavior,
-        patch_vertical_to_blue: config.patch_settings.patch_vertical_to_blue,
         tiny_elvetator_samus: config.patch_settings.tiny_elvetator_samus,
 
         flaahgra_music_files,
         suit_hue_rotate_angle: matches.value_of("suit hue rotate angle")
                 .map(|s| s.parse::<i32>().unwrap()),
-
-        // XXX We can unwrap safely because we verified the parse earlier
-        starting_items: matches.value_of("change starting items")
-                                .map(|s| StartingItems::from_u64(s.parse().unwrap()))
-                                .unwrap_or_default(),
-        random_starting_items,
-
-        comment: comment_message,
-        main_menu_message: String::from(mpdr_version),
+                               
+        comment: matches.value_of("text file comment").unwrap_or("").to_string(),
+        main_menu_message: matches.value_of("main menu message").unwrap_or("").to_string(),
 
         quickplay: config.patch_settings.quickplay,
-
-        bnr_game_name: banner.as_mut().and_then(|b| b.game_name.take()),
-        bnr_developer: banner.as_mut().and_then(|b| b.developer.take()),
+        
+        bnr_game_name: None,
+        bnr_developer: None,
 
         bnr_game_name_full: None,
         bnr_developer_full: None,
         bnr_description: None,
     })
-
 }
-
-
 
 #[cfg(windows)]
 fn was_launched_by_windows_explorer() -> bool

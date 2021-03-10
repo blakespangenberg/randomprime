@@ -4535,9 +4535,7 @@ pub struct ParsedConfig
     pub powerbomb_lockpick: bool,
     pub quiet: bool,
     pub tiny_elvetator_samus: bool,
-
-    pub elevator_layout: Vec<u8>,
-    pub elevator_layout_override: Vec<String>,
+    
     pub missile_lock_override: Vec<bool>,
     pub superheated_rooms: Vec<String>,
     pub deheated_rooms: Vec<String>,

@@ -1106,7 +1106,7 @@ fn main()
                 pak_locations.push(RoomInfo {
                     room_id: res.file_id,
                     name,
-                    name_id: strg_id,
+                    name_id: strg_id.to_u32(),
                     mapa_id,
                     pickups: room_locations,
                     doors: door_locations,

@@ -1,11 +1,11 @@
-use crate::{pickup_meta::ScriptObjectLocation, custom_assets::custom_asset_ids};
+use crate::{
+    pickup_meta::ScriptObjectLocation,
+    custom_assets::custom_asset_ids,
+    structs::scly_props::structs::{DamageVulnerability, BeamCombos, ChargedBeams},
+};
+
 use structs::{res_id, ResId};
-
-use std::mem;
-use serde::{Serialize, Deserialize};
 use reader_writer::{FourCC};
-
-// structs::scly_structs::DamageableTrigger
 
 #[derive(Clone, Copy, Debug)]
 pub struct DoorLocation {
@@ -66,55 +66,6 @@ pub enum BlastShieldType {
     Wavebuster,
     Icespreader,
     Flamethrower,
-}
-
-pub enum World {
-    FrigateOrpheon,
-    TallonOverworld,
-    ChozoRuins,
-    MagmoorCaverns,
-    PhendranaDrifts,
-    PhazonMines,
-    ImpactCrater,
-}
-
-impl World {
-    pub fn from_pak(pak_str:&str) -> Option<Self> {
-        match pak_str {
-            "Metroid1.pak" => Some(World::FrigateOrpheon),
-            "Metroid2.pak" => Some(World::ChozoRuins),
-            "Metroid3.pak" => Some(World::PhendranaDrifts),
-            "Metroid4.pak" => Some(World::TallonOverworld),
-            "metroid5.pak" => Some(World::PhazonMines),
-            "Metroid6.pak" => Some(World::MagmoorCaverns),
-            "Metroid7.pak" => Some(World::ImpactCrater),
-            _ => None
-        }
-    }
-
-    pub fn mlvl(&self) -> u32 {
-        match self {
-            World::FrigateOrpheon  => 0x158efe17,
-            World::ChozoRuins      => 0x83f6ff6f,
-            World::PhendranaDrifts => 0xa8be6291,
-            World::TallonOverworld => 0x39f2de28,
-            World::PhazonMines     => 0xb1ac4d65,
-            World::MagmoorCaverns  => 0x3ef8237c,
-            World::ImpactCrater    => 0xc13b09d1,
-        }
-    }
-
-    pub fn as_string(&self) -> String {
-        match self {
-            World::FrigateOrpheon  => "Frigate Orpheon"   .to_string(),
-            World::ChozoRuins      => "Chozo Ruins"       .to_string(),
-            World::PhendranaDrifts => "Phendrana Drifts"  .to_string(),
-            World::TallonOverworld => "Tallon Overworld"  .to_string(),
-            World::PhazonMines     => "Mines, Phazon"     .to_string(),
-            World::MagmoorCaverns  => "Magmoor Caverns"   .to_string(),
-            World::ImpactCrater    => "Crater, Impact"    .to_string(),
-        }
-    }
 }
 
 impl DoorType {
@@ -200,12 +151,12 @@ impl DoorType {
 
     pub const fn shield_cmdl(&self) -> ResId<res_id::CMDL> { // model of door, includes specification for which 128x128 texture to line door frame with
         match self {
-            DoorType::Blue         =>   0x0734977A, // vanilla CMDL - "blueShield_v1" - door frame model
-            DoorType::PowerOnly    =>   0x0734977A, // vanilla CMDL - "blueShield_v1" - door frame model
-            DoorType::Purple       =>   0x33188D1B, // vanilla CMDL
-            DoorType::White        =>   0x59649E9D, // vanilla CMDL
-            DoorType::Red          =>   0xBBBA1EC7, // vanilla CMDL
-            DoorType::Boost        =>   0x0734977A, // unused
+            DoorType::Blue         =>   ResId::new(0x0734977A), // vanilla CMDL - "blueShield_v1" - door frame model
+            DoorType::PowerOnly    =>   ResId::new(0x0734977A), // vanilla CMDL - "blueShield_v1" - door frame model
+            DoorType::Purple       =>   ResId::new(0x33188D1B), // vanilla CMDL
+            DoorType::White        =>   ResId::new(0x59649E9D), // vanilla CMDL
+            DoorType::Red          =>   ResId::new(0xBBBA1EC7), // vanilla CMDL
+            DoorType::Boost        =>   ResId::new(0x0734977A), // unused
             DoorType::PowerBomb    =>   custom_asset_ids::POWER_BOMB_DOOR_CMDL,
             DoorType::Bomb         =>   custom_asset_ids::MORPH_BALL_BOMB_DOOR_CMDL,
             DoorType::Missile      =>   custom_asset_ids::MISSILE_DOOR_CMDL,
@@ -218,10 +169,10 @@ impl DoorType {
             DoorType::Ai           =>   custom_asset_ids::AI_DOOR_CMDL,
 
             // vertical doors need a different CMDL, otherwise it will look like this: https://i.imgur.com/jGjWnmg.png //
-            DoorType::VerticalBlue         =>   0x18D0AEE6, // vanilla horizontal CMDL (blue)
-            DoorType::VerticalPowerOnly    =>   0x18D0AEE6, // vanilla CMDL
-            DoorType::VerticalPurple       =>   0x095B0B93, // vanilla CMDL
-            DoorType::VerticalWhite        =>   0xB7A8A4C9, // vanilla CMDL
+            DoorType::VerticalBlue         =>   ResId::new(0x18D0AEE6), // vanilla horizontal CMDL (blue)
+            DoorType::VerticalPowerOnly    =>   ResId::new(0x18D0AEE6), // vanilla CMDL
+            DoorType::VerticalPurple       =>   ResId::new(0x095B0B93), // vanilla CMDL
+            DoorType::VerticalWhite        =>   ResId::new(0xB7A8A4C9), // vanilla CMDL
             DoorType::VerticalRed          =>   custom_asset_ids::VERTICAL_RED_DOOR_CMDL, // vanilla CMDL
             DoorType::VerticalPowerBomb    =>   custom_asset_ids::VERTICAL_POWER_BOMB_DOOR_CMDL,
             DoorType::VerticalBomb         =>   custom_asset_ids::VERTICAL_MORPH_BALL_BOMB_DOOR_CMDL,
@@ -254,22 +205,22 @@ impl DoorType {
 
     pub const fn forcefield_txtr(&self) -> ResId<res_id::TXTR> { // texture to scroll across center of door for "forcefield" effect 16x16
         match self {
-            DoorType::Blue         =>   0x8A7F3683, // vanilla TXTR - blue 16x16
-            DoorType::PowerOnly    =>   0x8A7F3683, // vanilla TXTR
-            DoorType::Purple       =>   0xF68DF7F1, // vanilla TXTR
-            DoorType::White        =>   0xBE4CD99D, // vanilla TXTR
-            DoorType::Red          =>   0xFC095F6C, // vanilla TXTR
-            DoorType::Boost        =>   0x8A7F3683, // unused
-            DoorType::PowerBomb    =>   0x1D588B22, // solid yellow
-            DoorType::Bomb         =>   0xFC095F6C, // solid orange
-            DoorType::Missile      =>   0x8344BEC8, // solid grey
-            DoorType::Charge       =>   0x8A7F3683, // vanilla blue
-            DoorType::Super        =>   0xD5C17775, // solid green
-            DoorType::Disabled     =>   0x717AABCE, // void with specks
-            DoorType::Wavebuster   =>   0xF68DF7F1, // vanilla TXTR
-            DoorType::Icespreader  =>   0xBE4CD99D, // vanilla TXTR
-            DoorType::Flamethrower =>   0xFC095F6C, // vanilla TXTR
-            DoorType::Ai           =>   0x717AABCE, // void with specks
+            DoorType::Blue         =>   ResId::new(0x8A7F3683), // vanilla TXTR - blue 16x16
+            DoorType::PowerOnly    =>   ResId::new(0x8A7F3683), // vanilla TXTR
+            DoorType::Purple       =>   ResId::new(0xF68DF7F1), // vanilla TXTR
+            DoorType::White        =>   ResId::new(0xBE4CD99D), // vanilla TXTR
+            DoorType::Red          =>   ResId::new(0xFC095F6C), // vanilla TXTR
+            DoorType::Boost        =>   ResId::new(0x8A7F3683), // unused
+            DoorType::PowerBomb    =>   ResId::new(0x1D588B22), // solid yellow
+            DoorType::Bomb         =>   ResId::new(0xFC095F6C), // solid orange
+            DoorType::Missile      =>   ResId::new(0x8344BEC8), // solid grey
+            DoorType::Charge       =>   ResId::new(0x8A7F3683), // vanilla blue
+            DoorType::Super        =>   ResId::new(0xD5C17775), // solid green
+            DoorType::Disabled     =>   ResId::new(0x717AABCE), // void with specks
+            DoorType::Wavebuster   =>   ResId::new(0xF68DF7F1), // vanilla TXTR
+            DoorType::Icespreader  =>   ResId::new(0xBE4CD99D), // vanilla TXTR
+            DoorType::Flamethrower =>   ResId::new(0xFC095F6C), // vanilla TXTR
+            DoorType::Ai           =>   ResId::new(0x717AABCE), // void with specks
 
             // vertical doors use the same textures as their horizontal variants //
             DoorType::VerticalBlue         =>   DoorType::Blue.forcefield_txtr(),
@@ -292,21 +243,21 @@ impl DoorType {
 
     pub fn holorim_texture(&self) -> ResId<res_id::TXTR> { // The the color applied from the rim of the door frame, specified in CMDL
         match self {
-            DoorType::Blue                 =>   0x88ED4593, // vanilla TXTR - "blueholorim" texture [128x128]
-            DoorType::PowerOnly            =>   0x88ED4593, // vanilla TXTR
-            DoorType::Purple               =>   0xAB031EA9, // vanilla TXTR
-            DoorType::White                =>   0xF6870C9F, // vanilla TXTR
-            DoorType::Red                  =>   0x61A6945B, // vanilla TXTR
-            DoorType::Boost                =>   0x88ED4593, // unused
+            DoorType::Blue                 =>   ResId::new(0x88ED4593), // vanilla TXTR - "blueholorim" texture [128x128]
+            DoorType::PowerOnly            =>   ResId::new(0x88ED4593), // vanilla TXTR
+            DoorType::Purple               =>   ResId::new(0xAB031EA9), // vanilla TXTR
+            DoorType::White                =>   ResId::new(0xF6870C9F), // vanilla TXTR
+            DoorType::Red                  =>   ResId::new(0x61A6945B), // vanilla TXTR
+            DoorType::Boost                =>   ResId::new(0x88ED4593), // unused
             DoorType::PowerBomb            =>   custom_asset_ids::POWER_BOMB_DOOR_TXTR,
             DoorType::Bomb                 =>   custom_asset_ids::MORPH_BALL_BOMB_DOOR_TXTR,
-            DoorType::Missile              =>   0x459582C1, // "bedroomeyesC"
-            DoorType::Charge               =>   0xC7C8AF66, // banded blue ribbon
+            DoorType::Missile              =>   ResId::new(0x459582C1), // "bedroomeyesC"
+            DoorType::Charge               =>   ResId::new(0xC7C8AF66), // banded blue ribbon
             DoorType::Super                =>   custom_asset_ids::SUPER_MISSILE_DOOR_TXTR,
             DoorType::Wavebuster           =>   custom_asset_ids::WAVEBUSTER_DOOR_TXTR,
             DoorType::Icespreader          =>   custom_asset_ids::ICESPREADER_DOOR_TXTR,
             DoorType::Flamethrower         =>   custom_asset_ids::FLAMETHROWER_DOOR_TXTR,
-            DoorType::Disabled             =>   0x717AABCE, // void with specks
+            DoorType::Disabled             =>   ResId::new(0x717AABCE), // void with specks
             DoorType::Ai                   =>   custom_asset_ids::AI_DOOR_TXTR,
             
             // vertical doors use the same textures as their horizontal variants //

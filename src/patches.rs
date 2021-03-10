@@ -285,8 +285,8 @@ fn create_custom_door_cmdl<'r>(
     door_type: DoorType,
 ) -> structs::Resource<'r>
 {
-    let new_cmdl_id: u32 = door_type.shield_cmdl();
-    let new_txtr_id: u32 = door_type.holorim_texture();
+    let new_cmdl_id: ResId<res_id::CMDL> = door_type.shield_cmdl();
+    let new_txtr_id: ResId<res_id::TXTR> = door_type.holorim_texture();
 
     let new_door_cmdl = {
         // Find and read the blue door CMDL

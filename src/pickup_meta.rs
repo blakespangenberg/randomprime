@@ -5,7 +5,7 @@ use serde::Deserialize;
 use reader_writer::{FourCC, Reader};
 use structs::{Connection, ConnectionMsg, ConnectionState, Pickup, ResId, res_id};
 
-use crate::{custom_assets::custom_asset_ids,door_meta::DoorLocation};
+use crate::custom_assets::custom_asset_ids;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -327,6 +327,14 @@ pub struct PickupLocation
     pub attainment_audio: ScriptObjectLocation,
     pub hudmemo: ScriptObjectLocation,
     pub post_pickup_relay_connections: &'static [Connection]
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct DoorLocation {
+    pub door_location: ScriptObjectLocation,
+    pub door_force_location: ScriptObjectLocation,
+    pub door_shield_location: Option<ScriptObjectLocation>,
+    pub dock_number: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]

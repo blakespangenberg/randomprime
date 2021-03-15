@@ -7,14 +7,6 @@ use crate::{
 use structs::{res_id, ResId};
 use reader_writer::{FourCC};
 
-#[derive(Clone, Copy, Debug)]
-pub struct DoorLocation {
-    pub door_location: ScriptObjectLocation,
-    pub door_force_location: ScriptObjectLocation,
-    pub door_shield_location: Option<ScriptObjectLocation>,
-    pub dock_number: Option<u32>,
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 enum TypeVulnerability {
     Normal = 0x1,

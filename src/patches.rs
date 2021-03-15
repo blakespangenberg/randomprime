@@ -3904,7 +3904,7 @@ fn patch_starting_pickups<'r>(
 ) -> Result<(), String>
 {
     let room_id = area.mlvl_area.internal_id;
-    let layer_count = area.mrea().scly_section_mut().layers.as_mut_vec().len() as u32;
+    let layer_count = area.layer_flags.layer_count;
 
     if show_starting_items {
         // Turn on "Randomizer - Starting Items popup Layer"
@@ -3917,11 +3917,12 @@ fn patch_starting_pickups<'r>(
     let mut next_object_id = 0;
 
     for obj in scly.layers.as_mut_vec()[0].objects.iter_mut() {
-        if next_object_id < obj.instance_id {
+        if next_object_id < obj.instance_id && obj.instance_id < 0xDEAD000 {
             next_object_id = obj.instance_id;
         }
     }
 
+    println!("next_object_id:{}, layer_count:{}",next_object_id,layer_count);
     let timer_starting_items_popup_id = (next_object_id + 1) + (layer_count << 26);
     let hud_memo_starting_items_popup_id = (next_object_id + 2) + (layer_count << 26);
     let special_function_starting_items_popup_id = (next_object_id + 3) + (layer_count << 26);

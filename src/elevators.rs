@@ -523,8 +523,7 @@ macro_rules! decl_spawn_rooms {
 pub fn spawn_room_data_from_string(_dest_name: String)
 -> SpawnRoomData
 {
-    let mut dest_name = _dest_name.to_lowercase(); // case insensitive and whitespace insensitve
-    dest_name.retain(|c| !c.is_whitespace());
+    let dest_name = _dest_name.to_lowercase();
 
     // Handle special destinations //
     if dest_name == "credits" {
@@ -547,19 +546,19 @@ pub fn spawn_room_data_from_string(_dest_name: String)
     // Handle specific room destinations //
     let vec: Vec<&str> = dest_name.split(":").collect();
     assert!(vec.len() == 2);
-    let world_name = vec[0];
-    let room_name = vec[1];
+    let world_name = vec[0].trim();
+    let room_name = vec[1].trim();
 
     for (pak_name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each pak
         let world = World::from_pak(pak_name).unwrap();
 
-        if !world.as_string().to_lowercase().starts_with(&world_name.to_lowercase()) {
+        if !world.as_string().to_lowercase().starts_with(&world_name) {
             continue;
         }
 
         let mut idx: u32 = 0;
         for room_info in rooms.iter() { // for each room in the pak
-            if room_info.name.to_lowercase() == room_name.to_lowercase() {
+            if room_info.name.to_lowercase() == room_name {
 
                 return SpawnRoomData {
                     pak_name,

@@ -41,6 +41,7 @@ pub struct WorldTransporter<'r>
     pub pal_additions: Option<WorldTransporterPalAdditions<'r>>
 }
 
+
 #[auto_struct(Readable, Writable)]
 #[derive(Debug, Clone)]
 pub struct WorldTransporterPalAdditions<'r>

@@ -671,7 +671,6 @@ fn create_custom_door_cmdl<'r>(
     new_door_cmdl
 }
 
-
 fn artifact_layer_change_template<'r>(instance_id: u32, pickup_kind: u32)
     -> structs::SclyObject<'r>
 {
@@ -1128,7 +1127,7 @@ fn update_pickup(
 {
     let pickup = pickup.property_data.as_pickup_mut().unwrap();
     let original_pickup = pickup.clone();
-    
+
     let original_aabb = pickup_meta::aabb_for_pickup_cmdl(original_pickup.cmdl).unwrap();
     let new_aabb = pickup_meta::aabb_for_pickup_cmdl(pickup_type.pickup_data().cmdl).unwrap();
     let original_center = calculate_center(original_aabb, original_pickup.rotation,

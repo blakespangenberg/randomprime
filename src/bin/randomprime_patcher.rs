@@ -84,6 +84,7 @@ impl structs::ProgressNotifier for ProgressNotifier
     }
 }
 
+/*
 fn default_as_false() -> bool {
     false
 }
@@ -107,118 +108,23 @@ fn default_as_empty_aether_transform_vec() -> Vec<patches::AetherTransform> {
 fn default_as_empty_add_items_vec() -> Vec<patches::AdditionalItem> {
     Vec::new()
 }
-
-fn default_empty_string() -> String {
-    "".to_string()
-}
-
-fn default_u64_123456789() -> u64 {
-    123456789
-}
+*/
 
 #[derive(Deserialize)]
 struct PatchConfig {
-    skip_crater: bool,
     fix_flaaghra_music: bool,
     trilogy_iso: Option<String>,
-    varia_heat_protection: bool,
-    stagger_suit_damage: bool,
-    skip_hudmemos: bool,
-    powerbomb_lockpick: bool,
-    enable_one_way_doors: bool,
-    patch_map: bool,
-    obfuscate_items:bool,
     artifact_hints:String,
-    auto_enabled_elevators:bool,
-    
-    #[serde(default = "default_as_false")]
-    patch_vertical_to_blue:bool,
-    
-    #[serde(default = "default_as_false")]
-    patch_power_conduits: bool,
-
-    #[serde(default = "default_as_false")]
-    tiny_elvetator_samus: bool,
-
-    #[serde(default = "default_as_false")]
-    remove_missile_locks: bool,
-
-    #[serde(default = "default_as_false")]
-    remove_frigidite_lock: bool,
-
-    #[serde(default = "default_as_false")]
-    remove_mine_security_station_locks: bool,
-
-    #[serde(default = "default_as_false")]
-    lower_mines_backwards: bool,
-
-    #[serde(default = "default_as_false")]
-    biohazard_containment_alt_spawn: bool,
-
-    #[serde(default = "default_as_false")]
-    remove_hall_of_the_elders_forcefield: bool,
-
-    #[serde(default = "default_as_false")]
-    quickplay: bool,
 }
 
 #[derive(Deserialize)]
 struct Config {
     input_iso: String,
     output_iso: String,
-    layout_string: String,
-
-    #[serde(default = "default_as_empty_str_vec")]
-    elevator_layout_override: Vec<String>,
-
-    #[serde(default = "default_as_empty_bool_vec")]
-    missile_lock_override: Vec<bool>,
-
-    #[serde(default = "default_as_empty_str_vec")]
-    superheated_rooms: Vec<String>,
-
-    #[serde(default = "default_as_empty_str_vec")]
-    deheated_rooms: Vec<String>,
-
-    #[serde(default = "default_as_empty_str_vec")]
-    drain_liquid_rooms: Vec<String>,
-
-    #[serde(default = "default_as_empty_str_vec")]
-    underwater_rooms: Vec<String>,
-
-    #[serde(default = "default_as_empty_liquid_volume_vec")]
-    liquid_volumes: Vec<patches::LiquidVolume>,
-
-    #[serde(default = "default_as_empty_aether_transform_vec")]
-    aether_transforms: Vec<patches::AetherTransform>,
-
-    #[serde(default = "default_as_empty_add_items_vec")]
-    additional_items: Vec<patches::AdditionalItem>,
-    
-    #[serde(default = "default_empty_string")]
     new_save_spawn_room: String,
-
-    #[serde(default = "default_empty_string")]
     frigate_done_spawn_room: String,
-
-    seed: u64,
     patch_settings: PatchConfig,
-
-    new_save_starting_items: u64,
-    frigate_done_starting_items: u64,
-    
     excluded_doors: [HashMap<String,Vec<String>>;7],
-}
-
-#[derive(Deserialize)]
-struct ConfigBanner
-{
-    game_name: Option<String>,
-    developer: Option<String>,
-
-    game_name_full: Option<String>,
-    developer_full: Option<String>,
-    description: Option<String>,
 }
 
 fn get_config() -> Result<patches::ParsedConfig, String>
@@ -372,9 +278,8 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         patches::IsoFormat::Iso
     };
 
-    let layout = matches.value_of("pickup layout").unwrap().parse()?;
-
-    let seed = config.seed;
+    //let layout = matches.value_of("pickup layout").unwrap().parse()?;
+    let layout = "NCiq7nTAtTnqPcap9VMQk_o8Qj6ZjbPiOdYDB5tgtwL_f01-UpYklNGnL-gTu5IeVW3IoUiflH5LqNXB3wVEER4".parse()?;
 
     let artifact_hints = String::from(&config.patch_settings.artifact_hints);
     let artifact_hint_behavior = if artifact_hints == "default" {
@@ -461,7 +366,7 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         enable_vault_ledge_door: matches.is_present("enable vault ledge door"),
 
         artifact_hint_behavior,
-        tiny_elvetator_samus: config.patch_settings.tiny_elvetator_samus,
+        tiny_elvetator_samus: false,
 
         flaahgra_music_files,
         suit_hue_rotate_angle: matches.value_of("suit hue rotate angle")
@@ -470,7 +375,7 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         comment: matches.value_of("text file comment").unwrap_or("").to_string(),
         main_menu_message: matches.value_of("main menu message").unwrap_or("").to_string(),
 
-        quickplay: config.patch_settings.quickplay,
+        quickplay: false,
         
         bnr_game_name: None,
         bnr_developer: None,

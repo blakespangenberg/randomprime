@@ -10,7 +10,6 @@ use rand::{
     seq::SliceRandom,
     SeedableRng,
     Rng,
-    distributions::{Distribution,Uniform},
 };
 use serde::Deserialize;
 
@@ -32,7 +31,6 @@ use crate::{
     },
     GcDiscLookupExtensions,
     ResourceData,
-    structs::scly_props::water::{Water,FluidUVMotion,FluidLayerMotion},
 };
 
 use dol_symbol_table::mp1_symbol;
@@ -705,94 +703,6 @@ fn post_pickup_relay_template<'r>(instance_id: u32, connections: &'static [struc
             active: 1,
         }.into(),
     }
-}
-
-fn build_artifact_temple_totem_scan_strings<R>(pickup_layout: &[PickupType], rng: &mut R)
-    -> [String; 12]
-    where R: Rng
-{
-    let mut generic_text_templates = [
-        "I mean, maybe it'll be in the &push;&main-color=#43CD80;{room}&pop;. I forgot, to be honest.\0",
-        "I'm not sure where the artifact exactly is, but like, you can try the &push;&main-color=#43CD80;{room}&pop;.\0",
-        "Hey man, so some of the Chozo dudes are telling me that they're might be a thing in the &push;&main-color=#43CD80;{room}&pop;. Just sayin'.\0",
-        "Uhh umm... Where was it...? Uhhh, errr, it's definitely in the &push;&main-color=#43CD80;{room}&pop;! I am 100% not totally making it up...\0",
-        "Some say it may be in the &push;&main-color=#43CD80;{room}&pop;. Others say that you have no business here. Please leave me alone.\0",
-        "So a buddy of mine and I were drinking one night and we thought 'Hey, wouldn't be crazy if we put it at the &push;&main-color=#43CD80;{room}&pop;?' So we did and it took both of us just to get it there!\0",
-        "So, uhhh, I kind of got a little lazy and I might have just dropped mine somewhere... Maybe it's in the &push;&main-color=#43CD80;{room}&pop;? Who knows.\0",
-        "I uhhh... was a little late to the party and someone had to run out and hide both mine and hers. I owe her one. She told me it might be in the &push;&main-color=#43CD80;{room}&pop;, so you're going to have to trust her on this one.\0",
-        "Okay, so this jerk forgets to hide his and I had to hide it for him too. So, I just tossed his somewhere and made up a name for the room. This is literally saving the planet - how can anyone forget that? Anyway, mine is in the &push;&main-color=#43CD80;{room}&pop;, so go check it out. I'm never doing this again...\0",
-        "To be honest, I don't know if it was a Missile Expansion or not. Maybe it was... We'll just go with that: There's a Missile Expansion at the &push;&main-color=#43CD80;{room}&pop;.\0",
-        "Hear the words of Oh Leer, last Chozo of the Artifact Temple. May they serve you well, that you may find a key lost to our cause... Alright, whatever. It's at the &push;&main-color=#43CD80;{room}&pop;.\0",
-        "I kind of just played Frisbee with mine. It flew and landed too far so I didn't want to walk over and grab it because I was lazy. It's in the &push;&main-color=#43CD80;{room}&pop; if you want to find it.\0",
-    ];
-    generic_text_templates.shuffle(rng);
-    let mut generic_templates_iter = generic_text_templates.iter();
-
-    // TODO: If there end up being a large number of these, we could use a binary search
-    //       instead of searching linearly.
-    // XXX It would be nice if we didn't have to use Vec here and could allocated on the stack
-    //     instead, but there doesn't seem to be a way to do it that isn't extremely painful or
-    //     relies on unsafe code.
-    let mut specific_room_templates = [
-        // Artifact Temple
-        (0x2398E906, vec!["{pickup} awaits those who truly seek it.\0"]),
-    ];
-    for rt in &mut specific_room_templates {
-        rt.1.shuffle(rng);
-    }
-
-
-    let mut scan_text = [
-        String::new(), String::new(), String::new(), String::new(),
-        String::new(), String::new(), String::new(), String::new(),
-        String::new(), String::new(), String::new(), String::new(),
-    ];
-
-    let names_iter = pickup_meta::PICKUP_LOCATIONS.iter()
-        .flat_map(|i| i.1.iter()) // Flatten out the rooms of the paks
-        .flat_map(|l| iter::repeat((l.room_id, l.name)).take(l.pickup_locations.len()));
-    let iter = pickup_layout.iter()
-        .zip(names_iter)
-        // ▼▼▼▼ Only yield artifacts ▼▼▼▼
-        .filter(|&(pt, _)| pt.is_artifact());
-
-    // Shame there isn't a way to flatten tuples automatically
-    for (pt, (room_id, name)) in iter {
-        let artifact_id = pt.idx() - PickupType::ArtifactOfLifegiver.idx();
-        if scan_text[artifact_id].len() != 0 {
-            // If there are multiple of this particular artifact, then we use the first instance
-            // for the location of the artifact.
-            continue;
-        }
-
-        // If there are specific messages for this room, choose one, other wise choose a generic
-        // message.
-        let template = specific_room_templates.iter_mut()
-            .find(|row| row.0 == room_id)
-            .and_then(|row| row.1.pop())
-            .unwrap_or_else(|| generic_templates_iter.next().unwrap());
-        let pickup_name = pt.name();
-        scan_text[artifact_id] = template.replace("{room}", name).replace("{pickup}", pickup_name);
-    }
-
-    // Set a default value for any artifacts that we didn't find.
-    for i in 0..scan_text.len() {
-        if scan_text[i].len() == 0 {
-            scan_text[i] = "Artifact not present. This layout may not be completable.\0".to_owned();
-        }
-    }
-    scan_text
-}
-
-fn patch_artifact_totem_scan_strg(res: &mut structs::Resource, text: &str)
-    -> Result<(), String>
-{
-    let strg = res.kind.as_strg_mut().unwrap();
-    for st in strg.string_tables.as_mut_vec().iter_mut() {
-        let strings = st.strings.as_mut_vec();
-        *strings.last_mut().unwrap() = text.to_owned().into();
-    }
-    Ok(())
 }
 
 fn patch_save_banner_txtr(res: &mut structs::Resource)
@@ -4535,7 +4445,7 @@ pub struct ParsedConfig
     pub powerbomb_lockpick: bool,
     pub quiet: bool,
     pub tiny_elvetator_samus: bool,
-    
+
     pub missile_lock_override: Vec<bool>,
     pub superheated_rooms: Vec<String>,
     pub deheated_rooms: Vec<String>,
@@ -4609,7 +4519,7 @@ impl fmt::Display for Version
     }
 }
 
-pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
+pub fn patch_iso<T>(config: ParsedConfig, mut pn: T) -> Result<(), String>
     where T: structs::ProgressNotifier
 {
     let mut ct = Vec::new();
@@ -4696,24 +4606,6 @@ pub fn patch_iso<T>(mut config: ParsedConfig, mut pn: T) -> Result<(), String>
     Ok(())
 }
 
-fn room_strg_id_from_mrea_id(mrea_id: u32) -> (u32, u32)
-{
-    for _ in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) {
-        let mut idx = 0;
-        for (_, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() {
-            for room_info in rooms.iter() {
-                if room_info.room_id == mrea_id {
-                    return (idx ,room_info.name_id);
-                }
-            }
-            idx = idx + 1;
-        }
-    }
-
-    assert!(false);
-    (0, 0)
-}
-
 fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, version: Version)
     -> Result<(), String>
 {
@@ -4723,8 +4615,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let new_save_spawn_room = spawn_room_data_from_string(config.new_save_spawn_room.to_string());
     let frigate_done_spawn_room = spawn_room_data_from_string(config.frigate_done_spawn_room.to_string());
     assert!(frigate_done_spawn_room.mlvl != World::FrigateOrpheon.mlvl()); // panic if the frigate level gets you stuck in a loop
-
-    /*** Come to a few logical conclusions about patching options ***/
 
     // If none of the elevators go to frigate, and the spawn room isn't frigate, we can remove it to improve patch time
     let skip_frigate = {
@@ -4751,9 +4641,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     assert!(new_save_spawn_room.mlvl != World::FrigateOrpheon.mlvl() || skip_frigate); // panic if the games starts in the removed frigate level
 
-
     let mut rng = StdRng::seed_from_u64(config.layout.seed);
-    let artifact_totem_strings = build_artifact_temple_totem_scan_strings(pickup_layout, &mut rng);
 
     let pickup_resources = collect_pickup_resources(gc_disc, shown_starting_items);
     let pickup_resources = &pickup_resources;
@@ -5081,11 +4969,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         resource_info!("01_over_mainplaza.MREA").into(),
         patch_landing_site_cutscene_triggers
     );
-
-    let new_save_starting_items = {
-
-    };
-
     // New Save Room Starting Items //
     patcher.add_scly_patch(
         (new_save_spawn_room.pak_name.as_bytes(), new_save_spawn_room.mrea),

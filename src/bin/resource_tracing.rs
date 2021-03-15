@@ -942,7 +942,6 @@ fn main()
     let mut locations: Vec<Vec<RoomInfo>> = Vec::new();
 
     for f in &filenames {
-        // println!("----->{}",f.to_string());
         let file_entry = gc_disc.find_file(f).unwrap();
         let pak = match *file_entry.file().unwrap() {
             structs::FstEntryFile::Pak(ref pak) => pak.clone(),

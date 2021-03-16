@@ -505,9 +505,9 @@ macro_rules! decl_spawn_rooms {
 
             pub fn to_string(&self) -> String
             {
-                for (pak_name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each pak
+                for (pak_name, rooms) in pickup_meta::ROOM_INFO.iter() { // for each pak
                     for room_info in rooms.iter() { // for each room in the pak
-                        if self.spawn_room_data().mrea == room_info.room_id {
+                        if self.spawn_room_data().mrea == room_info.room_id.to_u32() {
                             return room_info.name.to_string();
                         }
                     }
@@ -549,7 +549,7 @@ pub fn spawn_room_data_from_string(_dest_name: String)
     let world_name = vec[0].trim();
     let room_name = vec[1].trim();
 
-    for (pak_name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each pak
+    for (pak_name, rooms) in pickup_meta::ROOM_INFO.iter() { // for each pak
         let world = World::from_pak(pak_name).unwrap();
 
         if !world.as_string().to_lowercase().starts_with(&world_name) {
@@ -563,7 +563,7 @@ pub fn spawn_room_data_from_string(_dest_name: String)
                 return SpawnRoomData {
                     pak_name,
                     mlvl: world.mlvl(),
-                    mrea: room_info.room_id,
+                    mrea: room_info.room_id.to_u32(),
                     mrea_idx: idx,
                     room_id: 0,
                     name: room_info.name,

@@ -12,14 +12,10 @@ use randomprime::{
 };
 
 use std::{
-    collections::HashMap,
     fs::{File, OpenOptions},
-    fs,
     panic,
     process::Command,
 };
-
-use serde::{Deserialize};
 
 
 struct ProgressNotifier
@@ -74,62 +70,12 @@ impl structs::ProgressNotifier for ProgressNotifier
         }
         println!("Flushing written data to the disk...");
     }
-
-    fn notify_stacking_warning(&mut self)
-    {
-        if self.quiet {
-            return;
-        }
-        println!("Item randomized game. Skipping item randomizer configuration.");
-    }
 }
 
-/*
-fn default_as_false() -> bool {
-    false
-}
-
-fn default_as_empty_str_vec() -> Vec<String> {
-    Vec::new()
-}
-
-fn default_as_empty_bool_vec() -> Vec<bool> {
-    Vec::new()
-}
-
-fn default_as_empty_liquid_volume_vec() -> Vec<patches::LiquidVolume> {
-    Vec::new()
-}
-
-fn default_as_empty_aether_transform_vec() -> Vec<patches::AetherTransform> {
-    Vec::new()
-}
-
-fn default_as_empty_add_items_vec() -> Vec<patches::AdditionalItem> {
-    Vec::new()
-}
-*/
-
-#[derive(Deserialize)]
-struct PatchConfig {
-    fix_flaaghra_music: bool,
-    trilogy_iso: Option<String>,
-    artifact_hints:String,
-}
-
-#[derive(Deserialize)]
-struct Config {
-    input_iso: String,
-    output_iso: String,
-    new_save_spawn_room: String,
-    frigate_done_spawn_room: String,
-    patch_settings: PatchConfig,
-    excluded_doors: [HashMap<String,Vec<String>>;7],
-}
 
 fn get_config() -> Result<patches::ParsedConfig, String>
 {
-    /*let matches = App::new("randomprime ISO patcher")
+    let matches = App::new("randomprime ISO patcher")
         .version(crate_version!())
         .arg(Arg::with_name("input iso path")
             .long("input-iso")
@@ -143,21 +89,7 @@ fn get_config() -> Result<patches::ParsedConfig, String>
             .long("layout")
             .required(true)
             .takes_value(true)
-            .allow_hyphen_values(true))*/
-
-
-    let matches = App::new("randomprime ISO patcher")
-        .version(crate_version!())
-        .arg(Arg::with_name("input iso path")
-            .long("input-iso")
-            .takes_value(true))
-        .arg(Arg::with_name("output iso path")
-            .long("output-iso")
-            .takes_value(true))
-        .arg(Arg::with_name("profile json path")
-            .long("profile")
-            .required(true)
-            .takes_value(true))
+            .allow_hyphen_values(true))
         .arg(Arg::with_name("skip frigate")
             .long("skip-frigate")
             .help("New save files will skip the \"Space Pirate Frigate\" tutorial level"))
@@ -250,24 +182,18 @@ fn get_config() -> Result<patches::ParsedConfig, String>
                 .takes_value(true))
         .get_matches();
 
-    let json_path = matches.value_of("profile json path").unwrap();
-    let input_json:&str = &fs::read_to_string(json_path)
-                .map_err(|e| format!("Could not read JSON file: {}",e)).unwrap();
-
-    let config:Config = serde_json::from_str(input_json)
-                .map_err(|e| format!("Could not parse JSON file: {}",e)).unwrap();
-    let input_iso_path = config.input_iso;
+    let input_iso_path = matches.value_of("input iso path").unwrap();
     let input_iso_file = File::open(input_iso_path)
                 .map_err(|e| format!("Failed to open input iso: {}", e))?;
     let input_iso_mmap = unsafe { memmap::Mmap::map(&input_iso_file) }
                 .map_err(|e| format!("Failed to open input iso: {}", e))?;
 
-    let output_iso_path = config.output_iso;
+    let output_iso_path = matches.value_of("output iso path").unwrap();
     let out_iso = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
-        .open(&output_iso_path)
+        .open(output_iso_path)
         .map_err(|e| format!("Failed to open output file: {}", e))?;
 
     let iso_format = if output_iso_path.ends_with(".gcz") {
@@ -278,34 +204,23 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         patches::IsoFormat::Iso
     };
 
-    //let layout = matches.value_of("pickup layout").unwrap().parse()?;
-    let layout = "NCiq7nTAtTnqPcap9VMQk_o8Qj6ZjbPiOdYDB5tgtwL_f01-UpYklNGnL-gTu5IeVW3IoUiflH5LqNXB3wVEER4".parse()?;
+    let layout = matches.value_of("pickup layout").unwrap().parse()?;
 
-    let artifact_hints = String::from(&config.patch_settings.artifact_hints);
-    let artifact_hint_behavior = if artifact_hints == "default" {
-        patches::ArtifactHintBehavior::Default
-    } else if artifact_hints == "none" {
-        patches::ArtifactHintBehavior::None
-    } else { // e.g. "all"
+    let artifact_hint_behavior = if matches.is_present("all artifact hints") {
         patches::ArtifactHintBehavior::All
-        
+    } else if matches.is_present("no artifact hints") {
+        patches::ArtifactHintBehavior::None
+    } else {
+        patches::ArtifactHintBehavior::Default
     };
 
-    let flaahgra_music_files = if config.patch_settings.fix_flaaghra_music {
-        if let Some(path) = config.patch_settings.trilogy_iso {
-            Some(extract_flaahgra_music_files(&path)?)
-        } else {
-            None
-        }
+    let flaahgra_music_files = if let Some(path) = matches.value_of("trilogy disc path") {
+        Some(extract_flaahgra_music_files(&path)?)
     } else {
         None
     };
 
-    let new_save_starting_items = matches.value_of("new save starting items")
-        .map(|s| StartingItems::from_u64(s.parse().unwrap()))
-        .unwrap_or(StartingItems::from_u64(0));
-
-    let frigate_done_starting_items = matches.value_of("frigate done starting items")
+    let random_starting_items = matches.value_of("random starting items")
         .map(|s| StartingItems::from_u64(s.parse().unwrap()))
         .unwrap_or(StartingItems::from_u64(0));
 
@@ -313,34 +228,11 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         input_iso: input_iso_mmap,
         output_iso: out_iso,
 
-        additional_items: vec![].into(),
-        aether_transforms: vec![].into(),
-        deheated_rooms: vec![].into(),
-        superheated_rooms: vec![].into(),
-        drain_liquid_rooms: vec![].into(),
-        liquid_volumes: vec![].into(),
-        underwater_rooms: vec![].into(),
-        missile_lock_override: vec![].into(),
-        
-        excluded_doors: config.excluded_doors,
-        new_save_spawn_room: config.new_save_spawn_room,
-        frigate_done_spawn_room: config.frigate_done_spawn_room,
-        new_save_starting_items,
-        frigate_done_starting_items,
-
-        biohazard_containment_alt_spawn: false,
-        powerbomb_lockpick: false,
-        remove_frigidite_lock: false,
-        patch_power_conduits: false,
-        lower_mines_backwards: false,
-        remove_hall_of_the_elders_forcefield: false,
-        remove_mine_security_station_locks: false,
-        remove_missile_locks: false,
-
         layout,
 
         iso_format,
         skip_hudmenus: matches.is_present("skip hudmenus"),
+        skip_frigate: matches.is_present("skip frigate"),
         etank_capacity: matches.value_of("etank capacity")
                                     .unwrap_or_default()
                                     .parse::<u32>()
@@ -366,17 +258,22 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         enable_vault_ledge_door: matches.is_present("enable vault ledge door"),
 
         artifact_hint_behavior,
-        tiny_elvetator_samus: false,
 
         flaahgra_music_files,
         suit_hue_rotate_angle: matches.value_of("suit hue rotate angle")
                 .map(|s| s.parse::<i32>().unwrap()),
-                               
+
+        // XXX We can unwrap safely because we verified the parse earlier
+        starting_items: matches.value_of("change starting items")
+                                .map(|s| StartingItems::from_u64(s.parse().unwrap()))
+                                .unwrap_or_default(),
+        random_starting_items,
+
         comment: matches.value_of("text file comment").unwrap_or("").to_string(),
         main_menu_message: matches.value_of("main menu message").unwrap_or("").to_string(),
 
-        quickplay: false,
-        
+        quickplay: matches.is_present("quickplay"),
+
         bnr_game_name: None,
         bnr_developer: None,
 
@@ -384,7 +281,10 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         bnr_developer_full: None,
         bnr_description: None,
     })
+
 }
+
+
 
 #[cfg(windows)]
 fn was_launched_by_windows_explorer() -> bool

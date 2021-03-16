@@ -263,14 +263,12 @@ impl PickupType
 
     pub fn from_string(string: String) -> Self {
         for i in PickupType::iter() {
-            if i.name().to_string().to_lowercase() == string.to_lowercase() {
+            if i.name().to_string().to_lowercase().trim() == string.to_lowercase().trim() {
                 return i;
             }
         }
 
-        println!("Unknown Item Type - {}", string);
-        assert!(false);
-        PickupType::Nothing
+        panic!("Unknown Item Type - {}", string);
     }
 }
 
@@ -330,7 +328,8 @@ pub struct PickupLocation
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct DoorLocation {
+pub struct DoorLocation
+{
     pub door_location: ScriptObjectLocation,
     pub door_force_location: ScriptObjectLocation,
     pub door_shield_location: Option<ScriptObjectLocation>,
@@ -347,10 +346,10 @@ pub struct ScriptObjectLocation
 #[derive(Clone, Copy, Debug)]
 pub struct RoomInfo
 {
-    pub room_id: u32,
+    pub room_id: ResId<res_id::MREA>,
     pub name: &'static str,
-    pub name_id: u32,
-    pub mapa_id: u32,
+    pub name_id: ResId<res_id::STRG>,
+    pub mapa_id: ResId<res_id::MAPA>,
     pub pickup_locations: &'static [PickupLocation],
     pub door_locations: &'static [DoorLocation],
     pub objects_to_remove: &'static [ObjectsToRemove],

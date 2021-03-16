@@ -112,7 +112,7 @@ fn collect_pickup_resources<'r>(
     let mut found = HashMap::with_capacity(looking_for.len());
 
     // Iterate through all paks //
-    for pak_name in pickup_meta::PICKUP_LOCATIONS.iter().map(|(name, _)| name) {
+    for pak_name in pickup_meta::ROOM_INFO.iter().map(|(name, _)| name) {
 
         // Get pak //
         let file_entry = gc_disc.find_file(pak_name).unwrap();
@@ -3874,7 +3874,7 @@ fn patch_credits(res: &mut structs::Resource, pickup_layout: &[PickupType])
         } else {
             continue
         };
-        let room_name = pickup_meta::PICKUP_LOCATIONS.iter()
+        let room_name = pickup_meta::ROOM_INFO.iter()
             .flat_map(|pak_locs| pak_locs.1.iter())
             .flat_map(|loc| iter::repeat(loc.name).take(loc.pickup_locations.len()))
             .nth(room_idx)
@@ -3921,7 +3921,6 @@ fn patch_starting_pickups<'r>(
         }
     }
 
-    println!("next_object_id:{}, layer_count:{}",next_object_id,layer_count);
     let timer_starting_items_popup_id = (next_object_id + 1) + (layer_count << 26);
     let hud_memo_starting_items_popup_id = (next_object_id + 2) + (layer_count << 26);
     let special_function_starting_items_popup_id = (next_object_id + 3) + (layer_count << 26);
@@ -4161,7 +4160,7 @@ fn patch_dol<'r>(
     let powerbomb_hud_formating_patch = ppcasm!(symbol_addr!("SetBombParams__17CHudBallInterfaceFiiibbb", version) + 0x2c, {
             b skip;
         fmt:
-            .asciiz b"%d/%d"; // %d";
+            .asciiz b"%d/%d";// %d";
             nop;
         skip:
             mr         r6, r27;
@@ -4553,7 +4552,11 @@ pub fn patch_iso<T>(config: ParsedConfig, mut pn: T) -> Result<(), String>
                 "or NTSC-US, NTSC-J, PAL Metroid Prime Trilogy."
             ))?
     };
-
+    if gc_disc.find_file("randomprime.txt").is_some() {
+        Err(concat!("The input ISO has already been randomized once before. ",
+                    "You must start from an unmodified ISO every time."
+        ))?
+    }
     if version == Version::NtscU0_01 {
         Err("The NTSC 0-01 version of Metroid Prime is not current supported.")?;
     }
@@ -4823,7 +4826,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     
     // Patch pickups and doors
     let mut layout_iterator = pickup_layout.iter();
-    for (name, rooms) in pickup_meta::PICKUP_LOCATIONS.iter() { // for each .pak
+    for (name, rooms) in pickup_meta::ROOM_INFO.iter() { // for each .pak
         let world = World::from_pak(name).unwrap();
         let level = world as usize;
 
@@ -4832,7 +4835,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         for room_info in rooms.iter() { // for each room in the pak
             // patch the item locations
             {
-                 patcher.add_scly_patch((name.as_bytes(), room_info.room_id), move |_, area| {
+                 patcher.add_scly_patch((name.as_bytes(), room_info.room_id.to_u32()), move |_, area| {
                     // Remove objects
                     let layers = area.mrea().scly_section_mut().layers.as_mut_vec();
                     for otr in room_info.objects_to_remove {
@@ -4852,7 +4855,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
                         pickup_type
                     };
                     patcher.add_scly_patch(
-                        (name.as_bytes(), room_info.room_id),
+                        (name.as_bytes(), room_info.room_id.to_u32()),
                         move |ps, area| modify_pickups_in_mrea(
                                 ps,
                                 area,
@@ -4876,22 +4879,23 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
                 // println!("excluded_doors[{}][{}][{}]", level, room_info.name.to_string(), door_index);
                 let door_specification = &config.excluded_doors[level][room_info.name][door_index];
                 if door_specification.to_lowercase().trim() == "default" { continue; }
-
-                let is_vertical_door =  (room_info.room_id == 0x11BD63B7 && door_index == 0) || // Tower Chamber
-                                        (room_info.room_id == 0x0D72F1F7 && door_index == 1) || // Tower of Light
-                                        (room_info.room_id == 0xFB54A0CB && door_index == 4) || // Hall of the Elders 
-                                        (room_info.room_id == 0xE1981EFC && door_index == 0) || // Elder Chamber
-                                        (room_info.room_id == 0x43E4CC25 && door_index == 1) || // Research Lab Hydra
-                                        (room_info.room_id == 0x37BBB33C && door_index == 1) || // Observatory Access
-                                        (room_info.room_id == 0xD8E905DD && door_index == 1) || // Research Core Access
-                                        (room_info.room_id == 0x21B4BFF6 && door_index == 1) || // Research Lab Aether
-                                        (room_info.room_id == 0x3F375ECC && door_index == 2) || // Omega Research
-                                        (room_info.room_id == 0xF517A1EA && door_index == 1) || // Dynamo Access (Careful of Chozo room w/ same name)
-                                        (room_info.room_id == 0x8A97BB54 && door_index == 1) || // Elite Research
-                                        (room_info.room_id == 0xA20201D4                   ) || // Security Access B (both doors)
-                                        (room_info.room_id == 0x956F1552 && door_index == 1) || // Mine Security Station
-                                        (room_info.room_id == 0xC50AF17A && door_index == 2) || // Elite Control
-                                        (room_info.room_id == 0x90709AAC && door_index == 1);   // Ventilation Shaft
+		
+		let room_id = room_info.room_id.to_u32();
+                let is_vertical_door =  (room_id == 0x11BD63B7 && door_index == 0) || // Tower Chamber
+                                        (room_id == 0x0D72F1F7 && door_index == 1) || // Tower of Light
+                                        (room_id == 0xFB54A0CB && door_index == 4) || // Hall of the Elders 
+                                        (room_id == 0xE1981EFC && door_index == 0) || // Elder Chamber
+                                        (room_id == 0x43E4CC25 && door_index == 1) || // Research Lab Hydra
+                                        (room_id == 0x37BBB33C && door_index == 1) || // Observatory Access
+                                        (room_id == 0xD8E905DD && door_index == 1) || // Research Core Access
+                                        (room_id == 0x21B4BFF6 && door_index == 1) || // Research Lab Aether
+                                        (room_id == 0x3F375ECC && door_index == 2) || // Omega Research
+                                        (room_id == 0xF517A1EA && door_index == 1) || // Dynamo Access (Careful of Chozo room w/ same name)
+                                        (room_id == 0x8A97BB54 && door_index == 1) || // Elite Research
+                                        (room_id == 0xA20201D4                   ) || // Security Access B (both doors)
+                                        (room_id == 0x956F1552 && door_index == 1) || // Mine Security Station
+                                        (room_id == 0xC50AF17A && door_index == 2) || // Elite Control
+                                        (room_id == 0x90709AAC && door_index == 1);   // Ventilation Shaft
                 
                 let door_type = {
                     let mut _door_type = DoorType::from_string(door_specification.to_string()).unwrap();
@@ -4902,13 +4906,13 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
                 };
 
                 patcher.add_scly_patch(
-                    (name.as_bytes(), room_info.room_id),
+                    (name.as_bytes(), room_info.room_id.to_u32()),
                     move |_ps, area| patch_door(_ps, area,door_location, door_type, BlastShieldType::Missile, door_resources, config.powerbomb_lockpick)
                 );
                 
                 if room_info.mapa_id != 0 {
                     patcher.add_resource_patch(
-                        (&[name.as_bytes()], room_info.mapa_id,b"MAPA".into()),
+                        (&[name.as_bytes()], room_info.mapa_id.to_u32(),b"MAPA".into()),
                         move |res| patch_map_door_icon(res,door_location, door_type)
                     );
                 }

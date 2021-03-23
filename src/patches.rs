@@ -2251,34 +2251,34 @@ fn patch_dol<'r>(
             .patch(symbol_addr!("aMetroidprimeB", version), b"randomprime B\0"[..].into())?;
     }
 
-    // let ball_color_patch = ppcasm!(symbol_addr!("skBallInnerGlowColors", version), {
-    //     .asciiz b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
-    // });
-    // dol_patcher.ppcasm_patch(&ball_color_patch)?;
-    // let ball_color_patch = ppcasm!(symbol_addr!("BallAuxGlowColors", version), {
-    //     .asciiz b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
-    // });
-    // dol_patcher.ppcasm_patch(&ball_color_patch)?;
-    // let ball_color_patch = ppcasm!(symbol_addr!("BallTransFlashColors", version), {
-    //     .asciiz b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
-    // });
-    // dol_patcher.ppcasm_patch(&ball_color_patch)?;
-    // let ball_color_patch = ppcasm!(symbol_addr!("BallSwooshColors", version), {
-    //     .asciiz b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
-    // });
-    // dol_patcher.ppcasm_patch(&ball_color_patch)?;
-    // let ball_color_patch = ppcasm!(symbol_addr!("BallSwooshColorsJaggy", version), {
-    //     .asciiz b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
-    // });
-    // dol_patcher.ppcasm_patch(&ball_color_patch)?;
-    // let ball_color_patch = ppcasm!(symbol_addr!("BallSwooshColorsCharged", version), {
-    //     .asciiz b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
-    // });
-    // dol_patcher.ppcasm_patch(&ball_color_patch)?;
-    // let ball_color_patch = ppcasm!(symbol_addr!("BallGlowColors", version), {
-    //     .asciiz b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
-    // });
-    // dol_patcher.ppcasm_patch(&ball_color_patch)?;
+    let ball_color_patch = ppcasm!(symbol_addr!("skBallInnerGlowColors", version), {
+        .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+    });
+    dol_patcher.ppcasm_patch(&ball_color_patch)?;
+    let ball_color_patch = ppcasm!(symbol_addr!("BallAuxGlowColors", version), {
+        .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+    });
+    dol_patcher.ppcasm_patch(&ball_color_patch)?;
+    let ball_color_patch = ppcasm!(symbol_addr!("BallTransFlashColors", version), {
+        .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+    });
+    dol_patcher.ppcasm_patch(&ball_color_patch)?;
+    let ball_color_patch = ppcasm!(symbol_addr!("BallSwooshColors", version), {
+        .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+    });
+    dol_patcher.ppcasm_patch(&ball_color_patch)?;
+    let ball_color_patch = ppcasm!(symbol_addr!("BallSwooshColorsJaggy", version), {
+        .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+    });
+    dol_patcher.ppcasm_patch(&ball_color_patch)?;
+    let ball_color_patch = ppcasm!(symbol_addr!("BallSwooshColorsCharged", version), {
+        .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+    });
+    dol_patcher.ppcasm_patch(&ball_color_patch)?;
+    let ball_color_patch = ppcasm!(symbol_addr!("BallGlowColors", version), {
+        .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+    });
+    dol_patcher.ppcasm_patch(&ball_color_patch)?;
 
     let cinematic_skip_patch = ppcasm!(symbol_addr!("ShouldSkipCinematic__22CScriptSpecialFunctionFR13CStateManager", version), {
             li      r3, 0x1;
@@ -2541,6 +2541,74 @@ fn empty_frigate_pak<'r>(file: &mut structs::FstEntryFile)
         structs::ResourceKind::External(vec![0; 64], b"XXXX".into())
     );
     pak.resources = iter::once(res).collect();
+    Ok(())
+}
+
+fn patch_ctwk_game(res: &mut structs::Resource)
+    -> Result<(), String>
+{
+    let mut ctwk = res.kind.as_ctwk_mut().unwrap();
+    let mut ctwk_game = match &mut ctwk {
+        structs::Ctwk::CtwkGame(i) => i,
+        _ => panic!("Failed to map res=0x{:X} as CtwkGame", res.file_id),
+    };
+
+    println!("before - {:?}", ctwk_game);
+    ctwk_game.press_start_delay = 0.001;
+    // ctwk_game.fov = 80.0;
+    // ctwk_game.gravity_water_fog_distance_base = 10.0;
+    Ok(())
+}
+
+fn patch_ctwk_player(res: &mut structs::Resource)
+-> Result<(), String>
+{
+    let mut ctwk = res.kind.as_ctwk_mut().unwrap();
+    let mut ctwk_player = match &mut ctwk {
+        structs::Ctwk::CtwkPlayer(i) => i,
+        _ => panic!("Failed to map res=0x{:X} as CtwkPlayer", res.file_id),
+    };
+    
+    println!("before - {:?}", ctwk_player);
+    ctwk_player.scan_freezes_game = 0;
+    //ctwk_player.bomb_jump_height = 10.0;
+    //ctwk_player.bomb_jump_radius = 10.0;
+    //ctwk_player.vertical_jump_accel = 50.0;
+    //ctwk_player.vertical_double_jump_accel = 300.0;
+    //ctwk_player.allowed_ledge_time = 0.75;
+    ctwk_player.translation_friction[0] = 0.000001;
+    ctwk_player.scanning_range = 1000.0;
+    ctwk_player.scan_max_lock_distance = 1000.0;
+    ctwk_player.scan_max_target_distance = 1000.0;
+    ctwk_player.aim_max_distance = 1000.0;
+    ctwk_player.grapple_swing_length = 0.75;
+    ctwk_player.grapple_swing_period = 1.0;
+    ctwk_player.grapple_pull_speed_min = 50.0;
+    ctwk_player.max_grapple_turn_speed = 120.0;
+    ctwk_player.grapple_jump_force = 1000.0;
+    ctwk_player.grapple_release_time = 0.01;
+    ctwk_player.grapple_beam_speed = 1000.0;
+
+    let player_size_factor: f32 = 0.3;
+    ctwk_player.player_height = ctwk_player.player_height*player_size_factor;
+    ctwk_player.player_xy_half_extent = ctwk_player.player_xy_half_extent*player_size_factor;
+    ctwk_player.step_up_height = ctwk_player.step_up_height*player_size_factor;
+    ctwk_player.step_down_height = ctwk_player.step_down_height*player_size_factor;
+    ctwk_player.player_ball_half_extent = ctwk_player.player_ball_half_extent*player_size_factor;
+    // ctwk_player.normal_grav_accel = -30.0;
+
+    ctwk_player.frozen_timeout = 60.0;
+    ctwk_player.ice_break_jump_count = 50;
+
+    ctwk_player.aim_assist_vertical_angle = 60.0;
+    ctwk_player.aim_assist_horizontal_angle = 60.0;
+
+    ctwk_player.move_during_free_look = 1;
+    ctwk_player.freelook_turns_player = 0;
+    ctwk_player.lava_jump_factor = 10.0;
+    ctwk_player.lava_ball_jump_factor = 10.0;
+    ctwk_player.gun_button_toggles_holster = 1;
+
     Ok(())
 }
 
@@ -2871,6 +2939,35 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             Ok(())
         });
     }
+
+    // Patch Tweaks.pak
+    patcher.add_resource_patch(
+        resource_info!("Game.CTWK").into(),
+        |res| patch_ctwk_game(res),
+    );
+
+    patcher.add_resource_patch(
+        resource_info!("Player.CTWK").into(),
+        |res| patch_ctwk_player(res),
+    );
+
+    /* TODO: add more tweaks
+    953a7c63.CTWK -> Game.CTWK
+    264a4972.CTWK -> Player.CTWK
+    f1ed8fd7.CTWK -> PlayerControls.CTWK
+    3faec012.CTWK -> PlayerControls2.CTWK
+    85ca11e9.CTWK -> PlayerRes.CTWK
+    6907a32d.CTWK -> PlayerGun.CTWK
+    33b3323a.CTWK -> GunRes.CTWK
+    5ed56350.CTWK -> Ball.CTWK
+    94c76ecd.CTWK -> Targeting.CTWK
+    39ad28d3.CTWK -> CameraBob.CTWK
+    5f24eff8.CTWK -> SlideShow.CTWK
+    ed2e48a9.CTWK -> Gui.CTWK
+    c9954e56.CTWK -> GuiColors.CTWK
+    e66a4f86.CTWK -> AutoMapper.CTWK
+    1d180d7c.CTWK -> Particle.CTWK
+    */
 
     // Patch pickups
     let mut layout_iterator = pickup_layout.iter();

@@ -270,7 +270,7 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         random_starting_items,
 
         comment: matches.value_of("text file comment").unwrap_or("").to_string(),
-        main_menu_message: matches.value_of("main menu message").unwrap_or("").to_string(),
+        main_menu_message: "Seed Hash:\nBendezium Buffer\nChozo Mines".to_string(),
 
         quickplay: matches.is_present("quickplay"),
 

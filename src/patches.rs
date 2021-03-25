@@ -2575,19 +2575,18 @@ fn patch_ctwk_player(res: &mut structs::Resource)
     //ctwk_player.bomb_jump_radius = 10.0;
     //ctwk_player.vertical_jump_accel = 50.0;
     //ctwk_player.vertical_double_jump_accel = 300.0;
-    //ctwk_player.allowed_ledge_time = 0.75;
-    ctwk_player.translation_friction[0] = 0.000001;
     ctwk_player.scanning_range = 1000.0;
     ctwk_player.scan_max_lock_distance = 1000.0;
     ctwk_player.scan_max_target_distance = 1000.0;
     ctwk_player.aim_max_distance = 1000.0;
-    ctwk_player.grapple_swing_length = 0.75;
-    ctwk_player.grapple_swing_period = 1.0;
-    ctwk_player.grapple_pull_speed_min = 50.0;
-    ctwk_player.max_grapple_turn_speed = 120.0;
-    ctwk_player.grapple_jump_force = 1000.0;
-    ctwk_player.grapple_release_time = 0.01;
-    ctwk_player.grapple_beam_speed = 1000.0;
+
+    // ctwk_player.grapple_swing_length = 1.5;
+    // ctwk_player.grapple_pull_speed_min = 1.5;
+    ctwk_player.grapple_swing_period = 6.0;
+    ctwk_player.max_grapple_turn_speed = 1.5;
+    // ctwk_player.grapple_jump_force = 1.5;
+    // ctwk_player.grapple_release_time = 3.0;
+    ctwk_player.grapple_beam_speed = 1.0;
 
     let player_size_factor: f32 = 0.3;
     ctwk_player.player_height = ctwk_player.player_height*player_size_factor;
@@ -2602,11 +2601,16 @@ fn patch_ctwk_player(res: &mut structs::Resource)
 
     ctwk_player.aim_assist_vertical_angle = 60.0;
     ctwk_player.aim_assist_horizontal_angle = 60.0;
-
+    
+    /*
+    ctwk_player.allowed_ledge_time = 0.6;
+    ctwk_player.translation_friction[0] = 0.00001;
     ctwk_player.move_during_free_look = 1;
     ctwk_player.freelook_turns_player = 0;
-    ctwk_player.lava_jump_factor = 10.0;
-    ctwk_player.lava_ball_jump_factor = 10.0;
+    */
+    
+    ctwk_player.lava_jump_factor = 100.0;
+    ctwk_player.lava_ball_jump_factor = 100.0;
     ctwk_player.gun_button_toggles_holster = 1;
 
     Ok(())

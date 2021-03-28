@@ -2544,6 +2544,54 @@ fn empty_frigate_pak<'r>(file: &mut structs::FstEntryFile)
     Ok(())
 }
 
+fn patch_spawn_point_position<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+    x: f32,
+    y: f32,
+    z: f32,
+    default: bool,
+    non_default: bool,
+    morphed: bool,
+)
+-> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer_count = scly.layers.len();
+    for i in 0..layer_count {
+        let layer = &mut scly.layers.as_mut_vec()[i];
+        for obj in layer.objects.as_mut_vec().iter_mut() {
+            let _spawn_point = obj.property_data.as_spawn_point_mut();
+            if _spawn_point.is_none() {continue;}
+            let spawn_point = _spawn_point.unwrap();
+            
+            let skip = {
+                if default && non_default {
+                    false
+                } else if non_default && spawn_point.default_spawn == 0 {
+                    false
+                } else if default && spawn_point.default_spawn != 0 {
+                    false
+                } else {
+                    true
+                }
+            };
+
+            if skip {continue;}
+            
+            spawn_point.position[0] = x;
+            spawn_point.position[1] = y;
+            spawn_point.position[2] = z;
+            spawn_point.active = 1;
+            if morphed {
+                spawn_point.morphed = 1;    
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn patch_ctwk_game(res: &mut structs::Resource)
     -> Result<(), String>
 {
@@ -2553,7 +2601,7 @@ fn patch_ctwk_game(res: &mut structs::Resource)
         _ => panic!("Failed to map res=0x{:X} as CtwkGame", res.file_id),
     };
 
-    println!("before - {:?}", ctwk_game);
+    // println!("before - {:?}", ctwk_game);
     ctwk_game.press_start_delay = 0.001;
     // ctwk_game.fov = 80.0;
     // ctwk_game.gravity_water_fog_distance_base = 10.0;
@@ -2569,17 +2617,17 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32)
         _ => panic!("Failed to map res=0x{:X} as CtwkPlayer", res.file_id),
     };
     
-    println!("before - {:?}", ctwk_player);
+    // println!("before - {:?}", ctwk_player);
     ctwk_player.scan_freezes_game = 0;
     ctwk_player.scanning_range = 1000.0;
     ctwk_player.scan_max_lock_distance = 1000.0;
     ctwk_player.scan_max_target_distance = 1000.0;
     ctwk_player.aim_max_distance = 1000.0;
 
-    //ctwk_player.bomb_jump_height = 10.0;
-    //ctwk_player.bomb_jump_radius = 10.0;
-    //ctwk_player.vertical_jump_accel = 50.0;
-    //ctwk_player.vertical_double_jump_accel = 300.0;
+    // ctwk_player.bomb_jump_height = 10.0;
+    // ctwk_player.bomb_jump_radius = 10.0;
+    // ctwk_player.vertical_jump_accel = 50.0;
+    // ctwk_player.vertical_double_jump_accel = 300.0;
     
     // ctwk_player.grapple_pull_speed_min = 1.5;
     // ctwk_player.grapple_jump_force = 1.5;
@@ -3113,6 +3161,16 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             show_starting_items,
             &pickup_resources,
         )
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("01_over_mainplaza.MREA").into(),
+        move |_ps, area| patch_spawn_point_position(_ps, area, -369.55, 381.70, -19.5, true, true, true),
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("0_elev_lava_b.MREA").into(),
+        move |_ps, area| patch_spawn_point_position(_ps, area, 180.0, 340.0, 7.5, true, false, false),
     );
 
     patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);

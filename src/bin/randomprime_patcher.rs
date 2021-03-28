@@ -74,7 +74,7 @@ impl structs::ProgressNotifier for ProgressNotifier
 
 
 fn get_config() -> Result<patches::ParsedConfig, String>
-{
+{//player_size_factor
     let matches = App::new("randomprime ISO patcher")
         .version(crate_version!())
         .arg(Arg::with_name("input iso path")
@@ -90,6 +90,11 @@ fn get_config() -> Result<patches::ParsedConfig, String>
             .required(true)
             .takes_value(true)
             .allow_hyphen_values(true))
+        .arg(Arg::with_name("player size factor")
+            .long("player-size")
+            .help("Player and morph ball size. 0.5 is half size, 2.0 is double size, etc.")
+            .required(true)
+            .takes_value(true))
         .arg(Arg::with_name("skip frigate")
             .long("skip-frigate")
             .help("New save files will skip the \"Space Pirate Frigate\" tutorial level"))
@@ -228,9 +233,13 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         input_iso: input_iso_mmap,
         output_iso: out_iso,
 
-        layout,
+        layout, 
 
         iso_format,
+        player_size_factor: matches.value_of("player size factor")
+        .unwrap_or_default()
+        .parse::<f32>()
+        .unwrap_or(1.0),
         skip_hudmenus: matches.is_present("skip hudmenus"),
         skip_frigate: matches.is_present("skip frigate"),
         etank_capacity: matches.value_of("etank capacity")

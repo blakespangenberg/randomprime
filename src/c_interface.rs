@@ -312,6 +312,7 @@ fn inner(config_json: *const c_char, cb_data: *const (), cb: extern fn(*const ()
 
         layout,
 
+        player_size_factor: 1.0,
         iso_format: config.iso_format,
         skip_frigate: config.skip_frigate,
         skip_hudmenus: config.skip_hudmenus,

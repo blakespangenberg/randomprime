@@ -2629,11 +2629,12 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32)
     // ctwk_player.vertical_jump_accel = 50.0;
     // ctwk_player.vertical_double_jump_accel = 300.0;
     
-    // ctwk_player.grapple_pull_speed_min = 1.5;
     // ctwk_player.grapple_jump_force = 1.5;
     // ctwk_player.grapple_release_time = 3.0;
-    ctwk_player.grapple_swing_period = 7.0;
-    ctwk_player.max_grapple_turn_speed = 10.0;
+    // ctwk_player.grapple_swing_period = 7.0;
+    ctwk_player.grapple_beam_speed = 1.0;
+    ctwk_player.max_grapple_turn_speed = 6.66;
+    // ctwk_player.grapple_pull_speed_min = 1.5;
     
     ctwk_player.player_height = ctwk_player.player_height*player_size_factor;
     ctwk_player.player_xy_half_extent = ctwk_player.player_xy_half_extent*player_size_factor;
@@ -2654,13 +2655,32 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32)
     
     // Cursed Controls
     /*
-    ctwk_player.grapple_beam_speed = 1.0;
     ctwk_player.grapple_swing_length = 1.5;
     ctwk_player.allowed_ledge_time = 0.6;
     ctwk_player.translation_friction[0] = 0.00001;
     ctwk_player.move_during_free_look = 1;
     ctwk_player.freelook_turns_player = 0;
     */
+
+    Ok(())
+}
+
+fn is_control_disabler<'r>(obj: &structs::SclyObject<'r>) -> bool {
+    obj.property_data.is_player_hint()
+}
+
+fn patch_remove_control_disabler<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+)
+-> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer_count = scly.layers.len();
+    for i in 0..layer_count {
+        let layer = &mut scly.layers.as_mut_vec()[i];
+        layer.objects.as_mut_vec().retain(|obj| !is_control_disabler(obj));
+    }
 
     Ok(())
 }
@@ -3171,6 +3191,11 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     patcher.add_scly_patch(
         resource_info!("0_elev_lava_b.MREA").into(),
         move |_ps, area| patch_spawn_point_position(_ps, area, 180.0, 340.0, 7.5, true, false, false),
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("05_ice_shorelines.MREA").into(),
+        patch_remove_control_disabler
     );
 
     patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);

@@ -92,7 +92,12 @@ fn get_config() -> Result<patches::ParsedConfig, String>
             .allow_hyphen_values(true))
         .arg(Arg::with_name("player size factor")
             .long("player-size")
-            .help("Player and morph ball size. 0.5 is half size, 2.0 is double size, etc.")
+            .help("Playersize. 0.5 is half size, 2.0 is double size, etc.")
+            .required(true)
+            .takes_value(true))
+        .arg(Arg::with_name("ball size factor")
+            .long("ball-size")
+            .help("Morph ball size. 0.5 is half size, 2.0 is double size, etc.")
             .required(true)
             .takes_value(true))
         .arg(Arg::with_name("skip frigate")
@@ -237,6 +242,10 @@ fn get_config() -> Result<patches::ParsedConfig, String>
 
         iso_format,
         player_size_factor: matches.value_of("player size factor")
+        .unwrap_or_default()
+        .parse::<f32>()
+        .unwrap_or(1.0),
+        ball_size_factor: matches.value_of("ball size factor")
         .unwrap_or_default()
         .parse::<f32>()
         .unwrap_or(1.0),

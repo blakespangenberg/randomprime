@@ -2608,7 +2608,7 @@ fn patch_ctwk_game(res: &mut structs::Resource)
     Ok(())
 }
 
-fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32)
+fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32, ball_size_factor: f32)
 -> Result<(), String>
 {
     let mut ctwk = res.kind.as_ctwk_mut().unwrap();
@@ -2640,8 +2640,7 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32)
     ctwk_player.player_xy_half_extent = ctwk_player.player_xy_half_extent*player_size_factor;
     ctwk_player.step_up_height = ctwk_player.step_up_height*player_size_factor;
     ctwk_player.step_down_height = ctwk_player.step_down_height*player_size_factor;
-    ctwk_player.player_ball_half_extent = ctwk_player.player_ball_half_extent*player_size_factor;
-    // ctwk_player.normal_grav_accel = -30.0;
+    ctwk_player.player_ball_half_extent = ctwk_player.player_ball_half_extent*ball_size_factor;
 
     ctwk_player.frozen_timeout = 60.0;
     ctwk_player.ice_break_jump_count = 50;
@@ -2649,18 +2648,17 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32)
     ctwk_player.aim_assist_vertical_angle = 60.0;
     ctwk_player.aim_assist_horizontal_angle = 60.0;
 
-    ctwk_player.lava_jump_factor = 100.0;
+    ctwk_player.lava_jump_factor = 5000.0;
     ctwk_player.lava_ball_jump_factor = 100.0;
     ctwk_player.gun_button_toggles_holster = 1;
     
     // Cursed Controls
-    /*
+    ctwk_player.normal_grav_accel = -25.0;
     ctwk_player.grapple_swing_length = 1.5;
     ctwk_player.allowed_ledge_time = 0.6;
     ctwk_player.translation_friction[0] = 0.00001;
     ctwk_player.move_during_free_look = 1;
     ctwk_player.freelook_turns_player = 0;
-    */
 
     Ok(())
 }
@@ -2770,6 +2768,7 @@ pub struct ParsedConfig
 
     pub layout: crate::Layout,
     pub player_size_factor: f32,
+    pub ball_size_factor: f32,
 
     pub iso_format: IsoFormat,
     pub skip_frigate: bool,
@@ -3022,7 +3021,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     patcher.add_resource_patch(
         resource_info!("Player.CTWK").into(),
-        |res| patch_ctwk_player(res, config.player_size_factor),
+        |res| patch_ctwk_player(res, config.player_size_factor, config.ball_size_factor),
     );
 
     /* TODO: add more tweaks
@@ -3185,7 +3184,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
 
     patcher.add_scly_patch(
         resource_info!("01_over_mainplaza.MREA").into(),
-        move |_ps, area| patch_spawn_point_position(_ps, area, -369.55, 381.70, -19.5, true, true, true),
+        move |_ps, area| patch_spawn_point_position(_ps, area, -366.4123, 380.1873, -20.2648, true, true, true),
     );
 
     patcher.add_scly_patch(

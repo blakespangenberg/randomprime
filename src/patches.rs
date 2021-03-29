@@ -3198,6 +3198,16 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         patch_remove_control_disabler
     );
 
+    patcher.add_scly_patch(
+        resource_info!("07_ruinedroof.MREA").into(),
+        patch_remove_control_disabler
+    );
+
+    patcher.add_scly_patch(
+        resource_info!("00r_mines_connect.MREA").into(),
+        patch_remove_control_disabler
+    );
+
     patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
 
     make_elevators_patch(&mut patcher, &elevator_layout, config.auto_enabled_elevators);

@@ -2648,23 +2648,24 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32, ball_
         ctwk_player.move_during_free_look = 1;
         ctwk_player.freelook_turns_player = 0;
 
-        ctwk_player.translation_max_speed[0] = 10000.0;
-        ctwk_player.translation_max_speed[1] = 10000.0;
-        ctwk_player.translation_max_speed[2] = 10000.0;
-        ctwk_player.translation_max_speed[3] = 10000.0;
-        ctwk_player.translation_max_speed[4] = 10000.0;
-        ctwk_player.translation_max_speed[5] = 10000.0;
-        ctwk_player.translation_max_speed[6] = 10000.0;
-        ctwk_player.translation_max_speed[7] = 10000.0;
+        let speed_factor = 1.4;
+        ctwk_player.translation_max_speed[0] = ctwk_player.translation_max_speed[0]*speed_factor;
+        ctwk_player.translation_max_speed[1] = ctwk_player.translation_max_speed[1]*speed_factor;
+        ctwk_player.translation_max_speed[2] = ctwk_player.translation_max_speed[2]*speed_factor;
+        ctwk_player.translation_max_speed[3] = ctwk_player.translation_max_speed[3]*speed_factor;
+        ctwk_player.translation_max_speed[4] = ctwk_player.translation_max_speed[4]*speed_factor;
+        ctwk_player.translation_max_speed[5] = ctwk_player.translation_max_speed[5]*speed_factor;
+        ctwk_player.translation_max_speed[6] = ctwk_player.translation_max_speed[6]*speed_factor;
+        ctwk_player.translation_max_speed[7] = ctwk_player.translation_max_speed[7]*speed_factor;
 
-        ctwk_player.max_translational_acceleration[0] = 1000000.0;
-        ctwk_player.max_translational_acceleration[1] = 1000000.0;
-        ctwk_player.max_translational_acceleration[2] = 1000000.0;
-        ctwk_player.max_translational_acceleration[3] = 1000000.0;
-        ctwk_player.max_translational_acceleration[4] = 1000000.0;
-        ctwk_player.max_translational_acceleration[5] = 1000000.0;
-        ctwk_player.max_translational_acceleration[6] = 1000000.0;
-        ctwk_player.max_translational_acceleration[7] = 1000000.0;
+        ctwk_player.max_translational_acceleration[0] = ctwk_player.max_translational_acceleration[0]*speed_factor;
+        ctwk_player.max_translational_acceleration[1] = ctwk_player.max_translational_acceleration[1]*speed_factor;
+        ctwk_player.max_translational_acceleration[2] = ctwk_player.max_translational_acceleration[2]*speed_factor;
+        ctwk_player.max_translational_acceleration[3] = ctwk_player.max_translational_acceleration[3]*speed_factor;
+        ctwk_player.max_translational_acceleration[4] = ctwk_player.max_translational_acceleration[4]*speed_factor;
+        ctwk_player.max_translational_acceleration[5] = ctwk_player.max_translational_acceleration[5]*speed_factor;
+        ctwk_player.max_translational_acceleration[6] = ctwk_player.max_translational_acceleration[6]*speed_factor;
+        ctwk_player.max_translational_acceleration[7] = ctwk_player.max_translational_acceleration[7]*speed_factor;
     }
     
     ctwk_player.player_height = ctwk_player.player_height*player_size_factor;

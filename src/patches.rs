@@ -2681,10 +2681,6 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32, ball_
     Ok(())
 }
 
-fn is_control_disabler<'r>(obj: &structs::SclyObject<'r>) -> bool {
-    obj.property_data.is_player_hint()
-}
-
 fn patch_remove_control_disabler<'r>(
     _ps: &mut PatcherState,
     area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
@@ -2695,7 +2691,16 @@ fn patch_remove_control_disabler<'r>(
     let layer_count = scly.layers.len();
     for i in 0..layer_count {
         let layer = &mut scly.layers.as_mut_vec()[i];
-        layer.objects.as_mut_vec().retain(|obj| !is_control_disabler(obj));
+        for obj in layer.objects.as_mut_vec() {
+            let mut _player_hint = obj.property_data.as_player_hint_mut();
+            if _player_hint.is_some() {
+                let player_hint = _player_hint.unwrap();
+                player_hint.inner_struct.unknowns[5] = 0; // always enable unmorphing
+                player_hint.inner_struct.unknowns[6] = 0; // always enable morphing
+                player_hint.inner_struct.unknowns[7] = 0; // always enable controls
+                player_hint.inner_struct.unknowns[8] = 0; // always enable boost
+            }
+        }
     }
 
     Ok(())
@@ -3068,6 +3073,12 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     let mut layout_iterator = pickup_layout.iter();
     for (name, rooms) in pickup_meta::ROOM_INFO.iter() {
         for room_info in rooms.iter() {
+
+            patcher.add_scly_patch(
+                (name.as_bytes(), room_info.room_id.to_u32()),
+                patch_remove_control_disabler,
+            );
+
              patcher.add_scly_patch((name.as_bytes(), room_info.room_id.to_u32()), move |_, area| {
                 // Remove objects
                 let layers = area.mrea().scly_section_mut().layers.as_mut_vec();
@@ -3217,21 +3228,6 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     patcher.add_scly_patch(
         resource_info!("0_elev_lava_b.MREA").into(),
         move |_ps, area| patch_spawn_point_position(_ps, area, 180.0, 340.0, 7.5, true, false, false),
-    );
-
-    patcher.add_scly_patch(
-        resource_info!("05_ice_shorelines.MREA").into(),
-        patch_remove_control_disabler
-    );
-
-    patcher.add_scly_patch(
-        resource_info!("07_ruinedroof.MREA").into(),
-        patch_remove_control_disabler
-    );
-
-    patcher.add_scly_patch(
-        resource_info!("00r_mines_connect.MREA").into(),
-        patch_remove_control_disabler
     );
 
     make_elevators_patch(&mut patcher, &elevator_layout, config.auto_enabled_elevators);

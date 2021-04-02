@@ -379,7 +379,7 @@ fn modify_pickups_in_mrea<'r>(
     let new_layer_idx = area.layer_flags.layer_count as usize - 1;
 
     // Add our custom STRG
-    let hudmemo_dep = if config.skip_hudmenus && !ALWAYS_MODAL_HUDMENUS.contains(&location_idx) {
+    let hudmemo_dep = if config.skip_hudmenus && !ALWAYS_MODAL_HUDMENUS.contains(&location_idx) && config.qol {
         pickup_type.skip_hudmemos_strg().into()
     } else {
         pickup_type.hudmemo_strg().into()
@@ -2592,7 +2592,7 @@ fn patch_spawn_point_position<'r>(
     Ok(())
 }
 
-fn patch_ctwk_game(res: &mut structs::Resource)
+fn patch_ctwk_game(res: &mut structs::Resource, fov: f32)
     -> Result<(), String>
 {
     let mut ctwk = res.kind.as_ctwk_mut().unwrap();
@@ -2603,12 +2603,16 @@ fn patch_ctwk_game(res: &mut structs::Resource)
 
     // println!("before - {:?}", ctwk_game);
     ctwk_game.press_start_delay = 0.001;
-    // ctwk_game.fov = 80.0;
+    ctwk_game.fov = fov;
+
+    ctwk_game.hardmode_damage_mult = 2.0;
+    ctwk_game.hardmode_weapon_mult = 2.5;
+
     // ctwk_game.gravity_water_fog_distance_base = 10.0;
     Ok(())
 }
 
-fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32, ball_size_factor: f32)
+fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32, ball_size_factor: f32, cursed: bool, cheaty_lava: bool)
 -> Result<(), String>
 {
     let mut ctwk = res.kind.as_ctwk_mut().unwrap();
@@ -2618,23 +2622,50 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32, ball_
     };
     
     // println!("before - {:?}", ctwk_player);
-    ctwk_player.scan_freezes_game = 0;
-    ctwk_player.scanning_range = 1000.0;
-    ctwk_player.scan_max_lock_distance = 1000.0;
-    ctwk_player.scan_max_target_distance = 1000.0;
-    ctwk_player.aim_max_distance = 1000.0;
+    if cursed {
+        ctwk_player.scan_freezes_game = 0;
+        ctwk_player.scanning_range = 1000.0;
+        ctwk_player.scan_max_lock_distance = 1000.0;
+        ctwk_player.scan_max_target_distance = 1000.0;
+        ctwk_player.aim_max_distance = 1000.0;
+        ctwk_player.grapple_beam_speed = 0.8;
+        ctwk_player.bomb_jump_height = ctwk_player.bomb_jump_height*2.0;
+        ctwk_player.bomb_jump_radius = ctwk_player.bomb_jump_radius*2.0;
+        ctwk_player.frozen_timeout = 80.0;
+        ctwk_player.ice_break_jump_count = 100;
+        
+        ctwk_player.vertical_jump_accel = ctwk_player.vertical_jump_accel*2.0;
+        ctwk_player.vertical_double_jump_accel = ctwk_player.vertical_double_jump_accel*2.0;
 
-    // ctwk_player.bomb_jump_height = 10.0;
-    // ctwk_player.bomb_jump_radius = 10.0;
-    // ctwk_player.vertical_jump_accel = 50.0;
-    // ctwk_player.vertical_double_jump_accel = 300.0;
-    
-    // ctwk_player.grapple_jump_force = 1.5;
-    // ctwk_player.grapple_release_time = 3.0;
-    // ctwk_player.grapple_swing_period = 7.0;
-    ctwk_player.grapple_beam_speed = 1.0;
-    ctwk_player.max_grapple_turn_speed = 6.66;
-    // ctwk_player.grapple_pull_speed_min = 1.5;
+        ctwk_player.aim_assist_vertical_angle = 180.0;
+        ctwk_player.aim_assist_horizontal_angle = 180.0;
+
+        ctwk_player.gun_button_toggles_holster = 1;
+
+        ctwk_player.normal_grav_accel = ctwk_player.normal_grav_accel*0.8;
+        ctwk_player.allowed_ledge_time = 0.5;
+        ctwk_player.translation_friction[0] = 0.00001;
+        ctwk_player.move_during_free_look = 1;
+        ctwk_player.freelook_turns_player = 0;
+
+        ctwk_player.translation_max_speed[0] = 10000.0;
+        ctwk_player.translation_max_speed[1] = 10000.0;
+        ctwk_player.translation_max_speed[2] = 10000.0;
+        ctwk_player.translation_max_speed[3] = 10000.0;
+        ctwk_player.translation_max_speed[4] = 10000.0;
+        ctwk_player.translation_max_speed[5] = 10000.0;
+        ctwk_player.translation_max_speed[6] = 10000.0;
+        ctwk_player.translation_max_speed[7] = 10000.0;
+
+        ctwk_player.max_translational_acceleration[0] = 1000000.0;
+        ctwk_player.max_translational_acceleration[1] = 1000000.0;
+        ctwk_player.max_translational_acceleration[2] = 1000000.0;
+        ctwk_player.max_translational_acceleration[3] = 1000000.0;
+        ctwk_player.max_translational_acceleration[4] = 1000000.0;
+        ctwk_player.max_translational_acceleration[5] = 1000000.0;
+        ctwk_player.max_translational_acceleration[6] = 1000000.0;
+        ctwk_player.max_translational_acceleration[7] = 1000000.0;
+    }
     
     ctwk_player.player_height = ctwk_player.player_height*player_size_factor;
     ctwk_player.player_xy_half_extent = ctwk_player.player_xy_half_extent*player_size_factor;
@@ -2642,23 +2673,10 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32, ball_
     ctwk_player.step_down_height = ctwk_player.step_down_height*player_size_factor;
     ctwk_player.player_ball_half_extent = ctwk_player.player_ball_half_extent*ball_size_factor;
 
-    ctwk_player.frozen_timeout = 60.0;
-    ctwk_player.ice_break_jump_count = 50;
-
-    ctwk_player.aim_assist_vertical_angle = 60.0;
-    ctwk_player.aim_assist_horizontal_angle = 60.0;
-
-    ctwk_player.lava_jump_factor = 5000.0;
-    ctwk_player.lava_ball_jump_factor = 100.0;
-    ctwk_player.gun_button_toggles_holster = 1;
-    
-    // Cursed Controls
-    ctwk_player.normal_grav_accel = -25.0;
-    ctwk_player.grapple_swing_length = 1.5;
-    ctwk_player.allowed_ledge_time = 0.6;
-    ctwk_player.translation_friction[0] = 0.00001;
-    ctwk_player.move_during_free_look = 1;
-    ctwk_player.freelook_turns_player = 0;
+    if cheaty_lava && player_size_factor < 1.0 {
+        ctwk_player.lava_jump_factor = 100.0;
+        ctwk_player.lava_ball_jump_factor = 100.0;
+    }
 
     Ok(())
 }
@@ -2769,6 +2787,10 @@ pub struct ParsedConfig
     pub layout: crate::Layout,
     pub player_size_factor: f32,
     pub ball_size_factor: f32,
+    pub cursed_controls: bool,
+    pub cheaty_lava: bool,
+    pub qol: bool,
+    pub fov: f32,
 
     pub iso_format: IsoFormat,
     pub skip_frigate: bool,
@@ -3016,12 +3038,12 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
     // Patch Tweaks.pak
     patcher.add_resource_patch(
         resource_info!("Game.CTWK").into(),
-        |res| patch_ctwk_game(res),
+        |res| patch_ctwk_game(res, config.fov),
     );
 
     patcher.add_resource_patch(
         resource_info!("Player.CTWK").into(),
-        |res| patch_ctwk_player(res, config.player_size_factor, config.ball_size_factor),
+        |res| patch_ctwk_player(res, config.player_size_factor, config.ball_size_factor, config.cursed_controls, config.cheaty_lava),
     );
 
     /* TODO: add more tweaks
@@ -3132,59 +3154,64 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         resource_info!("07_Over_Stonehenge Totem 8.STRG"), // Nature
         resource_info!("07_Over_Stonehenge Totem 2.STRG"), // Strength
     ];
-    for (res_info, strg_text) in ARTIFACT_TOTEM_SCAN_STRGS.iter().zip(artifact_totem_strings.iter()) {
+
+    if config.qol {
+        for (res_info, strg_text) in ARTIFACT_TOTEM_SCAN_STRGS.iter().zip(artifact_totem_strings.iter()) {
+            patcher.add_resource_patch(
+                (*res_info).into(),
+                move |res| patch_artifact_totem_scan_strg(res, &strg_text),
+            );
+        }
+
         patcher.add_resource_patch(
-            (*res_info).into(),
-            move |res| patch_artifact_totem_scan_strg(res, &strg_text),
+            resource_info!("FRME_NewFileSelect.FRME").into(),
+            patch_main_menu
+        );
+    
+        patcher.add_resource_patch(
+            resource_info!("STRG_Credits.STRG").into(),
+            |res| patch_credits(res, &pickup_layout)
+        );
+    
+        patcher.add_resource_patch(
+            resource_info!("!MinesWorld_Master.SAVW").into(),
+            patch_mines_savw_for_phazon_suit_scan
+        );
+        patcher.add_scly_patch(
+            resource_info!("07_stonehenge.MREA").into(),
+            |ps, area| fix_artifact_of_truth_requirements(ps, area, &pickup_layout)
+        );
+        patcher.add_scly_patch(
+            resource_info!("07_stonehenge.MREA").into(),
+            |ps, area| patch_artifact_hint_availability(ps, area, config.artifact_hint_behavior)
+        );
+
+        patcher.add_resource_patch(
+            resource_info!("TXTR_SaveBanner.TXTR").into(),
+            patch_save_banner_txtr
         );
     }
 
-    patcher.add_resource_patch(
-        resource_info!("STRG_Main.STRG").into(),// 0x0552a456
-        |res| patch_main_strg(res, &config.main_menu_message)
-    );
-    patcher.add_resource_patch(
-        resource_info!("FRME_NewFileSelect.FRME").into(),
-        patch_main_menu
-    );
+    if config.qol {
+        patcher.add_resource_patch(
+            resource_info!("STRG_Main.STRG").into(),// 0x0552a456
+            |res| patch_main_strg(res, &config.main_menu_message)
+        ); 
+    }
 
-    patcher.add_resource_patch(
-        resource_info!("STRG_Credits.STRG").into(),
-        |res| patch_credits(res, &pickup_layout)
-    );
-
-    patcher.add_resource_patch(
-        resource_info!("!MinesWorld_Master.SAVW").into(),
-        patch_mines_savw_for_phazon_suit_scan
-    );
-    patcher.add_scly_patch(
-        resource_info!("07_stonehenge.MREA").into(),
-        |ps, area| fix_artifact_of_truth_requirements(ps, area, &pickup_layout)
-    );
-    patcher.add_scly_patch(
-        resource_info!("07_stonehenge.MREA").into(),
-        |ps, area| patch_artifact_hint_availability(ps, area, config.artifact_hint_behavior)
-    );
-
-    patcher.add_resource_patch(
-        resource_info!("TXTR_SaveBanner.TXTR").into(),
-        patch_save_banner_txtr
-    );
-
-    let show_starting_items = !config.random_starting_items.is_empty();
     patcher.add_scly_patch(
         (spawn_room.pak_name.as_bytes(), spawn_room.mrea),
         move |_ps, area| patch_starting_pickups(
             area,
             &starting_items,
-            show_starting_items,
+            false,
             &pickup_resources,
         )
-    );
+    );  
 
     patcher.add_scly_patch(
         resource_info!("01_over_mainplaza.MREA").into(),
-        move |_ps, area| patch_spawn_point_position(_ps, area, -366.4123, 380.1873, -20.2648, true, true, true),
+        move |_ps, area| patch_spawn_point_position(_ps, area, -366.4123, 380.1873, -20.2648, false, true, false),
     );
 
     patcher.add_scly_patch(
@@ -3207,160 +3234,165 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         patch_remove_control_disabler
     );
 
-    patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud);
-
     make_elevators_patch(&mut patcher, &elevator_layout, config.auto_enabled_elevators);
 
-    make_elite_research_fight_prereq_patches(&mut patcher);
+    if config.qol {
+        patcher.add_resource_patch(resource_info!("FRME_BallHud.FRME").into(), patch_morphball_hud); 
+        make_elite_research_fight_prereq_patches(&mut patcher);
 
-    patch_heat_damage_per_sec(&mut patcher, config.heat_damage_per_sec);
-
-    patcher.add_scly_patch(
-        resource_info!("22_Flaahgra.MREA").into(),
-        patch_sunchamber_prevent_wild_before_flaahgra
-    );
-    patcher.add_scly_patch(
-        resource_info!("0v_connect_tunnel.MREA").into(),
-        patch_sun_tower_prevent_wild_before_flaahgra
-    );
-    patcher.add_scly_patch(
-        resource_info!("00j_over_hall.MREA").into(),
-        patch_temple_security_station_cutscene_trigger
-    );
-    patcher.add_scly_patch(
-        resource_info!("01_ice_plaza.MREA").into(),
-        patch_ridley_phendrana_shorelines_cinematic
-    );
-    patcher.add_scly_patch(
-        resource_info!("08_mines.MREA").into(),
-        patch_mqa_cinematic
-    );
-    patcher.add_scly_patch(
-        resource_info!("08b_under_intro_ventshaft.MREA").into(),
-        patch_main_ventilation_shaft_section_b_door
-    );
-    patcher.add_scly_patch(
-        resource_info!("10_ice_research_a.MREA").into(),
-        patch_research_lab_hydra_barrier
-    );
-    patcher.add_scly_patch(
-        resource_info!("12_ice_research_b.MREA").into(),
-        move |ps, area| patch_lab_aether_cutscene_trigger(ps, area, version)
-    );
-    patcher.add_scly_patch(
-        resource_info!("13_ice_vault.MREA").into(),
-        patch_research_lab_aether_exploding_wall
-    );
-    patcher.add_scly_patch(
-        resource_info!("11_ice_observatory.MREA").into(),
-        patch_observatory_2nd_pass_solvablility
-    );
-    patcher.add_scly_patch(
-        resource_info!("11_ice_observatory.MREA").into(),
-        patch_observatory_1st_pass_softlock
-    );
-    patcher.add_scly_patch(
-        resource_info!("02_mines_shotemup.MREA").into(),
-        patch_mines_security_station_soft_lock
-    );
-    patcher.add_scly_patch(
-        resource_info!("18_ice_gravity_chamber.MREA").into(),
-        patch_gravity_chamber_stalactite_grapple_point
-    );
-    patcher.add_scly_patch(
-        resource_info!("01_mines_mainplaza.MREA").into(),
-        patch_main_quarry_barrier
-    );
-
-    if version == Version::NtscU0_00 {
         patcher.add_scly_patch(
-            resource_info!("00n_ice_connect.MREA").into(),
-            patch_research_core_access_soft_lock
+            resource_info!("22_Flaahgra.MREA").into(),
+            patch_sunchamber_prevent_wild_before_flaahgra
         );
-    } else {
         patcher.add_scly_patch(
-            resource_info!("08_courtyard.MREA").into(),
-            patch_arboretum_invisible_wall
+            resource_info!("0v_connect_tunnel.MREA").into(),
+            patch_sun_tower_prevent_wild_before_flaahgra
         );
-        if version != Version::NtscU0_01 {
-            patcher.add_scly_patch(
-                resource_info!("05_ice_shorelines.MREA").into(),
-                move |ps, area| patch_ruined_courtyard_thermal_conduits(ps, area, version)
-            );
-        }
-    }
-
-    if version == Version::NtscU0_02 {
+        patcher.add_scly_patch(
+            resource_info!("00j_over_hall.MREA").into(),
+            patch_temple_security_station_cutscene_trigger
+        );
+        patcher.add_scly_patch(
+            resource_info!("01_ice_plaza.MREA").into(),
+            patch_ridley_phendrana_shorelines_cinematic
+        );
+        patcher.add_scly_patch(
+            resource_info!("08_mines.MREA").into(),
+            patch_mqa_cinematic
+        );
+        patcher.add_scly_patch(
+            resource_info!("08b_under_intro_ventshaft.MREA").into(),
+            patch_main_ventilation_shaft_section_b_door
+        );
+        patcher.add_scly_patch(
+            resource_info!("10_ice_research_a.MREA").into(),
+            patch_research_lab_hydra_barrier
+        );
+        patcher.add_scly_patch(
+            resource_info!("12_ice_research_b.MREA").into(),
+            move |ps, area| patch_lab_aether_cutscene_trigger(ps, area, version)
+        );
+        patcher.add_scly_patch(
+            resource_info!("13_ice_vault.MREA").into(),
+            patch_research_lab_aether_exploding_wall
+        );
+        patcher.add_scly_patch(
+            resource_info!("11_ice_observatory.MREA").into(),
+            patch_observatory_2nd_pass_solvablility
+        );
+        patcher.add_scly_patch(
+            resource_info!("11_ice_observatory.MREA").into(),
+            patch_observatory_1st_pass_softlock
+        );
+        patcher.add_scly_patch(
+            resource_info!("02_mines_shotemup.MREA").into(),
+            patch_mines_security_station_soft_lock
+        );
+        patcher.add_scly_patch(
+            resource_info!("18_ice_gravity_chamber.MREA").into(),
+            patch_gravity_chamber_stalactite_grapple_point
+        );
         patcher.add_scly_patch(
             resource_info!("01_mines_mainplaza.MREA").into(),
-            patch_main_quarry_door_lock_0_02
+            patch_main_quarry_barrier
         );
-        patcher.add_scly_patch(
-            resource_info!("13_over_burningeffigy.MREA").into(),
-            patch_geothermal_core_door_lock_0_02
-        );
-        patcher.add_scly_patch(
-            resource_info!("19_hive_totem.MREA").into(),
-            patch_hive_totem_boss_trigger_0_02
-        );
-    }
-
-    if version == Version::Pal || version == Version::NtscJ || version == Version::NtscUTrilogy || version == Version::NtscJTrilogy || version == Version::PalTrilogy {
-        patcher.add_scly_patch(
-            resource_info!("04_mines_pillar.MREA").into(),
-            patch_ore_processing_destructible_rock_pal
-        );
-        patcher.add_scly_patch(
-            resource_info!("13_over_burningeffigy.MREA").into(),
-            patch_geothermal_core_destructible_rock_pal
-        );
-
-        if version == Version::Pal {
+    
+        if version == Version::NtscU0_00 {
+            patcher.add_scly_patch(
+                resource_info!("00n_ice_connect.MREA").into(),
+                patch_research_core_access_soft_lock
+            );
+        } else {
+            patcher.add_scly_patch(
+                resource_info!("08_courtyard.MREA").into(),
+                patch_arboretum_invisible_wall
+            );
+            if version != Version::NtscU0_01 {
+                patcher.add_scly_patch(
+                    resource_info!("05_ice_shorelines.MREA").into(),
+                    move |ps, area| patch_ruined_courtyard_thermal_conduits(ps, area, version)
+                );
+            }
+        }
+    
+        if version == Version::NtscU0_02 {
             patcher.add_scly_patch(
                 resource_info!("01_mines_mainplaza.MREA").into(),
-                patch_main_quarry_door_lock_pal
+                patch_main_quarry_door_lock_0_02
+            );
+            patcher.add_scly_patch(
+                resource_info!("13_over_burningeffigy.MREA").into(),
+                patch_geothermal_core_door_lock_0_02
+            );
+            patcher.add_scly_patch(
+                resource_info!("19_hive_totem.MREA").into(),
+                patch_hive_totem_boss_trigger_0_02
             );
         }
-    }
+    
+        if version == Version::Pal || version == Version::NtscJ || version == Version::NtscUTrilogy || version == Version::NtscJTrilogy || version == Version::PalTrilogy {
+            patcher.add_scly_patch(
+                resource_info!("04_mines_pillar.MREA").into(),
+                patch_ore_processing_destructible_rock_pal
+            );
+            patcher.add_scly_patch(
+                resource_info!("13_over_burningeffigy.MREA").into(),
+                patch_geothermal_core_destructible_rock_pal
+            );
+    
+            if version == Version::Pal {
+                patcher.add_scly_patch(
+                    resource_info!("01_mines_mainplaza.MREA").into(),
+                    patch_main_quarry_door_lock_pal
+                );
+            }
+        }
 
-    if spawn_room != SpawnRoom::LandingSite {
-        // If we have a non-default start point, patch the landing site to avoid
-        // weirdness with cutscene triggers and the ship spawning.
-        patcher.add_scly_patch(
-            resource_info!("01_over_mainplaza.MREA").into(),
-            patch_landing_site_cutscene_triggers
-        );
-    }
+        
+        if spawn_room != SpawnRoom::LandingSite {
+            // If we have a non-default start point, patch the landing site to avoid
+            // weirdness with cutscene triggers and the ship spawning.
+            patcher.add_scly_patch(
+                resource_info!("01_over_mainplaza.MREA").into(),
+                patch_landing_site_cutscene_triggers
+            );
+        }
 
-    // If any of the elevators go straight to the ending, patch out the pre-credits cutscene.
-    let skip_ending_cinematic = elevator_layout.values()
-        .any(|sr| sr == &SpawnRoom::EndingCinematic);
-    if skip_ending_cinematic {
-        patcher.add_scly_patch(
-            resource_info!("01_endcinema.MREA").into(),
-            patch_ending_scene_straight_to_credits
-        );
-    }
+        
+            // If any of the elevators go straight to the ending, patch out the pre-credits cutscene.
+            let skip_ending_cinematic = elevator_layout.values()
+            .any(|sr| sr == &SpawnRoom::EndingCinematic);
+        if skip_ending_cinematic {
+            patcher.add_scly_patch(
+                resource_info!("01_endcinema.MREA").into(),
+                patch_ending_scene_straight_to_credits
+            );
+        }
 
-    if version == Version::NtscU0_00 {
-        patcher.add_scly_patch(
-            resource_info!("03f_crater.MREA").into(),
-            patch_essence_cinematic_skip_whitescreen
-        );
-    }
-    if [Version::NtscU0_00, Version::NtscU0_02, Version::Pal].contains(&version) {
-        patcher.add_scly_patch(
-            resource_info!("03f_crater.MREA").into(),
-            patch_essence_cinematic_skip_nomusic
-        );
-    }
+        if version == Version::NtscU0_00 {
+            patcher.add_scly_patch(
+                resource_info!("03f_crater.MREA").into(),
+                patch_essence_cinematic_skip_whitescreen
+            );
+        }
+        if [Version::NtscU0_00, Version::NtscU0_02, Version::Pal].contains(&version) {
+            patcher.add_scly_patch(
+                resource_info!("03f_crater.MREA").into(),
+                patch_essence_cinematic_skip_nomusic
+            );
+        }
 
-    if config.enable_vault_ledge_door {
-        patcher.add_scly_patch(
-            resource_info!("01_mainplaza.MREA").into(),
-            make_main_plaza_locked_door_two_ways
-        );
+        if config.enable_vault_ledge_door {
+            patcher.add_scly_patch(
+                resource_info!("01_mainplaza.MREA").into(),
+                make_main_plaza_locked_door_two_ways
+            );
+        }
+
     }
+    
+    patch_heat_damage_per_sec(&mut patcher, config.heat_damage_per_sec);
+
 
     if let Some(angle) = config.suit_hue_rotate_angle {
         let iter = VARIA_SUIT_TEXTURES.iter()

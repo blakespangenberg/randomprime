@@ -92,7 +92,7 @@ fn get_config() -> Result<patches::ParsedConfig, String>
             .allow_hyphen_values(true))
         .arg(Arg::with_name("player size factor")
             .long("player-size")
-            .help("Playersize. 0.5 is half size, 2.0 is double size, etc.")
+            .help("Standing size. 0.5 is half size, 2.0 is double size, etc.")
             .required(true)
             .takes_value(true))
         .arg(Arg::with_name("ball size factor")
@@ -100,6 +100,20 @@ fn get_config() -> Result<patches::ParsedConfig, String>
             .help("Morph ball size. 0.5 is half size, 2.0 is double size, etc.")
             .required(true)
             .takes_value(true))
+        .arg(Arg::with_name("fov")
+            .long("fov")
+            .help("Field of view (default is 55)")
+            .required(true)
+            .takes_value(true))
+        .arg(Arg::with_name("cursed controls")
+            .long("cursed-controls")
+            .help("Makes the game play as miserably as possible"))
+        .arg(Arg::with_name("no cheaty lava")
+            .long("no-cheaty-lava")
+            .help("If the player size is < 1.0, jumping in lava shoots the player up, use this to disable that feature"))
+        .arg(Arg::with_name("no qol")
+            .long("no-qol")
+            .help("Skips patching all of the quality of life features introduced in randomizer"))
         .arg(Arg::with_name("skip frigate")
             .long("skip-frigate")
             .help("New save files will skip the \"Space Pirate Frigate\" tutorial level"))
@@ -234,6 +248,18 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         .map(|s| StartingItems::from_u64(s.parse().unwrap()))
         .unwrap_or(StartingItems::from_u64(0));
 
+    let player_size_factor = matches.value_of("player size factor")
+        .unwrap_or_default()
+        .parse::<f32>()
+        .unwrap_or(1.0);
+    
+    let ball_size_factor = matches.value_of("ball size factor")
+        .unwrap_or_default()
+        .parse::<f32>()
+        .unwrap_or(1.0);
+
+    let main_menu_message = format!("Player Size - {}\nMorph Ball size - {}\n", player_size_factor, ball_size_factor);
+
     Ok(patches::ParsedConfig {
         input_iso: input_iso_mmap,
         output_iso: out_iso,
@@ -241,14 +267,16 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         layout, 
 
         iso_format,
-        player_size_factor: matches.value_of("player size factor")
-        .unwrap_or_default()
-        .parse::<f32>()
-        .unwrap_or(1.0),
-        ball_size_factor: matches.value_of("ball size factor")
-        .unwrap_or_default()
-        .parse::<f32>()
-        .unwrap_or(1.0),
+        player_size_factor,
+        ball_size_factor,
+        cursed_controls: matches.is_present("cursed controls"),
+        cheaty_lava: !matches.is_present("no cheaty lava"),
+        qol: !matches.is_present("no qol"),
+        fov: matches.value_of("fov")
+            .unwrap_or_default()
+            .parse::<f32>()
+            .unwrap_or(55.0),
+
         skip_hudmenus: matches.is_present("skip hudmenus"),
         skip_frigate: matches.is_present("skip frigate"),
         etank_capacity: matches.value_of("etank capacity")
@@ -288,7 +316,7 @@ fn get_config() -> Result<patches::ParsedConfig, String>
         random_starting_items,
 
         comment: matches.value_of("text file comment").unwrap_or("").to_string(),
-        main_menu_message: "Seed Hash:\nBendezium Buffer\nChozo Mines".to_string(),
+        main_menu_message,
 
         quickplay: matches.is_present("quickplay"),
 

@@ -1,4 +1,4 @@
-
+/*
 
 use serde::{Serialize, Deserialize};
 
@@ -403,3 +403,4 @@ pub extern fn randomprime_patch_iso(config_json: *const c_char , cb_data: *const
         Err(msg) => cb(cb_data, CbMessage::error_json(&msg).as_ptr()),
     };
 }
+*/

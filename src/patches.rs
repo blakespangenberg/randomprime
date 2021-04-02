@@ -2092,7 +2092,6 @@ fn patch_credits(res: &mut structs::Resource, pickup_layout: &[PickupType])
     Ok(())
 }
 
-
 fn patch_starting_pickups<'r>(
     area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
     starting_items: &StartingItems,
@@ -2682,6 +2681,31 @@ fn patch_ctwk_player(res: &mut structs::Resource, player_size_factor: f32, ball_
     Ok(())
 }
 
+
+
+fn patch_move_item_loss_scan<'r>(
+    _ps: &mut PatcherState,
+    area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
+)
+-> Result<(), String>
+{
+    let scly = area.mrea().scly_section_mut();
+    let layer_count = scly.layers.len();
+    for i in 0..layer_count {
+        let layer = &mut scly.layers.as_mut_vec()[i];
+        for obj in layer.objects.as_mut_vec() {
+            let mut _poi = obj.property_data.as_point_of_interest_mut();
+            if _poi.is_some() {
+                let poi = _poi.unwrap();
+                poi.position[1] = poi.position[1] + 2.0;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+
 fn patch_remove_control_disabler<'r>(
     _ps: &mut PatcherState,
     area: &mut mlvl_wrapper::MlvlArea<'r, '_, '_, '_>,
@@ -3211,6 +3235,7 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
         ); 
     }
 
+    let starting_items_2 = starting_items.clone();
     patcher.add_scly_patch(
         (spawn_room.pak_name.as_bytes(), spawn_room.mrea),
         move |_ps, area| patch_starting_pickups(
@@ -3219,7 +3244,24 @@ fn build_and_run_patches(gc_disc: &mut structs::GcDisc, config: &ParsedConfig, v
             false,
             &pickup_resources,
         )
-    );  
+    );
+
+    if !config.skip_frigate {
+        patcher.add_scly_patch(
+            resource_info!("02_intro_elevator.MREA").into(),
+            move |_ps, area| patch_starting_pickups(
+                area,
+                &starting_items_2,
+                false,
+                &pickup_resources,
+            )
+        );
+
+        patcher.add_scly_patch(
+            resource_info!("02_intro_elevator.MREA").into(),
+            patch_move_item_loss_scan,
+        );
+    }
 
     patcher.add_scly_patch(
         resource_info!("01_over_mainplaza.MREA").into(),

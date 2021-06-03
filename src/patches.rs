@@ -98,7 +98,12 @@ fn collect_pickup_resources<'r>(gc_disc: &structs::GcDisc<'r>, starting_items: &
         assert!(found.insert(key, res).is_none());
     }
 
-    assert!(looking_for.is_empty());
+    // assert!(looking_for.is_empty());
+    if !looking_for.is_empty() {
+        println!("Could not find the following dependencies:");
+        println!("{:?}",looking_for);
+        println!("(this might be okay)");        
+    }
 
     found
 }
@@ -2249,7 +2254,7 @@ fn patch_dol<'r>(
             .patch(symbol_addr!("aMetroidprimeA", version), b"randomprime A\0"[..].into())?
             .patch(symbol_addr!("aMetroidprimeB", version), b"randomprime B\0"[..].into())?;
     }
-
+/*
     let ball_color_patch = ppcasm!(symbol_addr!("skBallInnerGlowColors", version), {
         .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
     });
@@ -2278,7 +2283,7 @@ fn patch_dol<'r>(
         .asciiz b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
     });
     dol_patcher.ppcasm_patch(&ball_color_patch)?;
-
+*/
     let cinematic_skip_patch = ppcasm!(symbol_addr!("ShouldSkipCinematic__22CScriptSpecialFunctionFR13CStateManager", version), {
             li      r3, 0x1;
             blr;

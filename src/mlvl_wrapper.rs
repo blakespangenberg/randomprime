@@ -85,9 +85,13 @@ impl<'r, 'mlvl, 'cursor, 'list> MlvlArea<'r, 'mlvl, 'cursor, 'list>
         let layers = self.mlvl_area.dependencies.deps.as_mut_vec();
         let iter = deps.filter_map(|dep| {
                 if layers.iter().all(|layer| layer.iter().all(|i| *i != dep)) {
-                    let res = pickup_resources[&(dep.asset_id, dep.asset_type)].clone();
-                    layers[layer_num].as_mut_vec().push(dep);
-                    Some(res)
+                    if !pickup_resources.contains_key(&(dep.asset_id, dep.asset_type)) {
+                        None
+                    } else {
+                        let res = pickup_resources[&(dep.asset_id, dep.asset_type)].clone();
+                        layers[layer_num].as_mut_vec().push(dep);
+                        Some(res)
+                    }
                 }  else {
                     None
                 }
